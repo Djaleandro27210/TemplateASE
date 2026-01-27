@@ -1,0 +1,3446 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         ;PRESERVE8
+    2 00000000         ;THUMB
+    3 00000000         
+    4 00000000         ;AREA input_data, READONLY, ALIGN=4
+    5 00000000         ;LTORG       ; Inserisce il literal pool qui
+    6 00000000         ;ALIGN 2
+    7 00000000         ;DATA_IN   DCB  0x0A, 0x01, 0x13, 0x02, 0x04, 0x06, 0x0F
+                       , 0x0A ; Dati definiti nel literal pool
+    8 00000000         ;ALIGN 2
+    9 00000000         ;N     DCD 8
+   10 00000000         ;ALIGN 2
+   11 00000000         
+   12 00000000         ;AREA output_data, READWRITE, ALIGN=4
+   13 00000000         ;BEST_3   DCB 0x0, 0x0, 0x0
+   14 00000000         ;ALIGN 2
+   15 00000000         
+   16 00000000         ;EXPORT DATA_IN
+   17 00000000         ;EXPORT N
+   18 00000000         ;EXPORT BEST_3 
+   19 00000000         ;NOTA BENE, LA AREA READONLY NON E' ASSOLUTAMENTE MODIFI
+                       CALE E RISCRIVIBILE
+   20 00000000         
+   21 00000000         
+   22 00000000         ;NOTE TEORICHE MIE:
+   23 00000000         ;--estrazione v[i]-----
+   24 00000000         ; Formato: LDR RegistroDest, [Base, Indice, LSL #Shift]
+   25 00000000         ;LDRB R4, [R0, R1, LSL #0] ; OFFSET = i * 1 (Dati a 8 bi
+                       t / BYTE)  (char, uint8_t)
+   26 00000000         ;LDRH R4, [R0, R1, LSL #1] ; OFFSET = i * 2 (Dati a 16 b
+                       it / HALF-WORD) (short, uint16_t)
+   27 00000000         ;LDR  R4, [R0, R1, LSL #2] ; OFFSET = i * 4 (Dati a 32 b
+                       it / WORD) (int, uint32_t, ptr,long)
+   28 00000000         ;
+   29 00000000         ;
+   30 00000000         ;i tasti sulla scheda sono: Sulla scheda sono in ordine:
+                        KEY 1 ---- KEY 2 ---- INT 0 
+   31 00000000         ;
+   32 00000000         ;
+   33 00000000         ;
+   34 00000000         ;
+   35 00000000         ;
+   36 00000000                 AREA             asm_functions, CODE, READONLY
+   37 00000000         
+   38 00000000         ;FUNZIONE ASSEMBLY GENERICA CONSIDERATA
+   39 00000000                 EXPORT           asm_funct
+   40 00000000         asm_funct
+                               FUNCTION
+   41 00000000         
+   42 00000000         ;RO = address of VETT
+   43 00000000         ;R1 = VAL
+   44 00000000         ;R2 = N
+   45 00000000         
+   46 00000000         ; save current SP for a faster access 
+   47 00000000         ; to parameters in the stack
+   48 00000000 46EC            MOV              r12, sp
+   49 00000002         ; save volatile registers
+   50 00000002 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+   51 00000006         
+   52 00000006         ;STMFD sp!,{R0-R3}
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   53 00000006         ;MOV R1,R0 ; ho bisogno di VETT address in R1
+   54 00000006         ;MOV R0,R2 ; bsort ha bisogno di N in R0
+   55 00000006         ;BL bsort
+   56 00000006         ;LDMFD sp!,{R0-R3}
+   57 00000006         ;; extract argument 4 and 5 into R4 and R5
+   58 00000006         ;LDR   r4, [r12]
+   59 00000006         ;LDR   r5, [r12,#4]
+   60 00000006         ;LDR   r6, [r12,#8]
+   61 00000006         
+   62 00000006         ; setup a value for R0 to return
+   63 00000006         ; restore volatile registers
+   64 00000006 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+   65 0000000A                 ENDFUNC
+   66 0000000A         
+   67 0000000A         
+   68 0000000A         
+   69 0000000A         ;------------------------------------------- bubblesort 
+                       --------------------------------------------------------
+                       --
+   70 0000000A         ;--
+   71 0000000A         ;--
+   72 0000000A         ;-- parametri: R0 = indirizzo del vettore da ordinare (v
+                       ettore di elementi in byte)
+   73 0000000A         ;--      R1 = numero di elementi del vettore da ordinare
+                        
+   74 0000000A         ;--
+   75 0000000A         ;-- ritorno:   X
+   76 0000000A         ;--
+   77 0000000A         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+   78 0000000A                 EXPORT           bubblesort
+   79 0000000A         bubblesort
+                               PROC
+   80 0000000A 46EC            MOV              r12, sp
+   81 0000000C E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+   82 00000010         
+   83 00000010         ; ALGORITMO 
+   84 00000010 460D            MOV              R5, R1
+   85 00000012 F04F 0B01       MOV              R11, #1
+   86 00000016         
+   87 00000016 1E49            SUBS             R1, R1, #1
+   88 00000018 D01A            BEQ              exit_bubblesort
+   89 0000001A         
+   90 0000001A         while_bubblesort
+   91 0000001A F1BB 0F01       CMP              R11, #1
+   92 0000001E D117            BNE              exit_bubblesort
+   93 00000020         
+   94 00000020 460D            MOV              R5, R1
+   95 00000022 F04F 0600       MOV              R6, #0
+   96 00000026 F04F 0701       MOV              R7, #1
+   97 0000002A F04F 0B00       MOV              R11, #0
+   98 0000002E         
+   99 0000002E         for_bubblesort
+  100 0000002E 5D84            LDRB             R4, [R0, R6]
+  101 00000030         ;LDR R4, [R0, R6, LSL#2] ;se il vettore in word
+  102 00000030 F810 8007       LDRB             R8, [R0, R7]
+  103 00000034         ;LDR R8, [R0, R7, LSL#2] ;se il vettore in word
+  104 00000034 45A0            CMP              R8, R4
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+  105 00000036         ;CMP R4, R8 ;ordine Cresente
+  106 00000036 BFC2 F04F 
+              0B01             MOVGT            R11, #1
+  107 0000003C F800 8006       STRBGT           R8, [R0, R6]
+  108 00000040         ;STRGT R8, [R0, R6, LSL#2]
+  109 00000040 55C4            STRBGT           R4, [R0, R7]
+  110 00000042         ;STRGT R4, [R0, R7, LSL#2]
+  111 00000042         
+  112 00000042 F106 0601       ADD              R6, R6, #1
+  113 00000046 F107 0701       ADD              R7, R7, #1
+  114 0000004A         
+  115 0000004A 1E6D            SUBS             R5, R5, #1
+  116 0000004C D1EF            BNE              for_bubblesort
+  117 0000004E D0E4            BEQ              while_bubblesort
+  118 00000050         
+  119 00000050         exit_bubblesort
+  120 00000050         ; restore volatile registers
+  121 00000050 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  122 00000054                 ENDP
+  123 00000054         
+  124 00000054         
+  125 00000054         ;------------------------------------------- call_svc --
+                       --------------------------------------------------------
+                       ----
+  126 00000054         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       ---  
+  127 00000054                 EXPORT           call_svc
+  128 00000054         call_svc
+                               FUNCTION
+  129 00000054         ; save current SP for a faster access 
+  130 00000054         ; to parameters in the stack
+  131 00000054         ;MOV   r12, sp
+  132 00000054         ; save volatile registers
+  133 00000054 46EC            MOV              r12, sp
+  134 00000056 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  135 0000005A 4668            MOV              R0,R13      ;PASS INTO THE SVC 
+                                                            HANDLER ADDRESS OF 
+                                                            PSP   
+  136 0000005C         ; your code
+  137 0000005C DF15            SVC              0x15
+  138 0000005E E7FE            B                .
+  139 00000060 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  140 00000064         ; restore volatile registers
+  141 00000064         ;LDMFD sp!,{pc}
+  142 00000064                 ENDFUNC
+  143 00000064         
+  144 00000064         
+  145 00000064         
+  146 00000064         ;------------------------------------------- isPrime ---
+                       --------------------------------------------------------
+                       ---
+  147 00000064         ;--
+  148 00000064         ;-- parametri: R0 = numero da testare
+  149 00000064         ;--
+  150 00000064         ;-- ritorno:   ="1" se il numero è primo, "0" se il num
+                       ero non è primo
+  151 00000064         ;--
+  152 00000064         ;-------------------------------------------------------
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+                       --------------------------------------------------------
+                       --
+  153 00000064                 EXPORT           isPrime
+  154 00000064         isPrime FUNCTION
+  155 00000064 E92D 4DF0       stmfd            sp!, {r4-r8, r10-r11, lr}
+  156 00000068         
+  157 00000068 2800            cmp              r0,#0
+  158 0000006A D00D            beq              not_primep
+  159 0000006C 2803            cmp              r0, #3
+  160 0000006E DD0F            ble              primep
+  161 00000070         
+  162 00000070 4601            mov              r1, r0      ;original number
+  163 00000072 F1A1 0201       sub              r2, r1, #1  ;test number
+  164 00000076         ;while test number > 1: perform original_number % test_n
+                       umber, it it's 0 -> prime
+  165 00000076         ;if test_number reaches 1 -> not prime
+  166 00000076         ;linear complexity
+  167 00000076         
+  168 00000076         whilep                               ;check test_number 
+                                                            > 1
+  169 00000076 2A01            cmp              r2, #1
+  170 00000078 DD0A            ble              primep
+  171 0000007A         
+  172 0000007A         ;perform r1 % r2
+  173 0000007A F7FF FFFE       bl               calc_mod
+  174 0000007E         ;result in r0
+  175 0000007E         ;if remainder == 0 -> not prime
+  176 0000007E 2800            cmp              r0, #0
+  177 00000080 D002            beq              not_primep
+  178 00000082         
+  179 00000082         ;test_number --
+  180 00000082 F1A2 0201       sub              r2, r2, #1
+  181 00000086         ;loop back
+  182 00000086 E7F6            b                whilep
+  183 00000088         
+  184 00000088 F04F 0000 
+                       not_primep
+                               mov              r0, #0
+  185 0000008C E8BD 8DF0       ldmfd            sp!, {r4-r8, r10-r11, pc}
+  186 00000090         
+  187 00000090 F04F 0001 
+                       primep  mov              r0, #1
+  188 00000094 E8BD 8DF0       ldmfd            sp!, {r4-r8, r10-r11, pc}
+  189 00000098                 ENDFUNC
+  190 00000098         
+  191 00000098         
+  192 00000098         
+  193 00000098         ;------------------------------------------- calc_mod --
+                       --------------------------------------------------------
+                       --
+  194 00000098         ;--
+  195 00000098         ;-- parametri: R0 = numeratore
+  196 00000098         ;--      R1 = denominatore
+  197 00000098         ;--
+  198 00000098         ;-- ritorno:   R0%R1 = R0 mod R1 => resto della division
+                       e intera di R0 e R1
+  199 00000098         ;--
+  200 00000098         ;-------------------------------------------------------
+                       --------------------------------------------------------
+
+
+
+ARM Macro Assembler    Page 5 
+
+
+                       --
+  201 00000098                 EXPORT           calc_mod
+  202 00000098         calc_mod
+                               FUNCTION
+  203 00000098 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  204 0000009C         ;calcolo la divisione
+  205 0000009C FBB1 F2F0       udiv             r2, r1, r0  ;r2 = r1/r0
+  206 000000A0 FB02 0011       mls              r0, r2, r1, r0 ;metto in r0 il 
+                                                            resto intero di r0/
+                                                            r1=r2 => r0= r0-(r2
+                                                            *r1)
+  207 000000A4         ;result in r0
+  208 000000A4         
+  209 000000A4 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  210 000000A8         
+  211 000000A8                 ENDFUNC
+  212 000000A8         
+  213 000000A8         
+  214 000000A8         ;------------------------------------------- check_lower
+                       Case ---------------------------------------------------
+                       --
+  215 000000A8         ;--
+  216 000000A8         ;-- parametri: R0 = parola da analizzare
+  217 000000A8         ;--
+  218 000000A8         ;-- ritorno:   =1 se parola tutta a caratteri lower, =0 
+                       altrimenti
+  219 000000A8         ;--
+  220 000000A8         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  221 000000A8                 EXPORT           check_lowerCase
+  222 000000A8         check_lowerCase
+                               FUNCTION
+  223 000000A8 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  224 000000AC         
+  225 000000AC 2861            cmp              r0, #'a'
+  226 000000AE DB04            blt              nope
+  227 000000B0 287A            cmp              r0, #'z'
+  228 000000B2 DC02            bgt              nope
+  229 000000B4         
+  230 000000B4 F04F 0001       mov              r0, #1
+  231 000000B8 4770            bx               lr
+  232 000000BA         
+  233 000000BA F04F 0000 
+                       nope    mov              r0, #0
+  234 000000BE E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  235 000000C2                 ENDFUNC
+  236 000000C2         
+  237 000000C2         
+  238 000000C2         
+  239 000000C2         ;------------------------------------------- check_upper
+                       Case ---------------------------------------------------
+                       --
+  240 000000C2         ;--
+  241 000000C2         ;-- parametri: R0 = parola da analizzare
+  242 000000C2         ;--
+  243 000000C2         ;-- ritorno:   =1 se parola tutta a caratteri upper, =0 
+                       altrimenti
+  244 000000C2         ;--
+
+
+
+ARM Macro Assembler    Page 6 
+
+
+  245 000000C2         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  246 000000C2                 EXPORT           check_upperCase
+  247 000000C2         check_upperCase
+                               FUNCTION
+  248 000000C2 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  249 000000C6         
+  250 000000C6 2841            cmp              r0, #'A'
+  251 000000C8 DB04            blt              nope2
+  252 000000CA 285A            cmp              r0, #'Z'
+  253 000000CC DC02            bgt              nope2
+  254 000000CE         
+  255 000000CE F04F 0001       mov              r0, #1
+  256 000000D2 4770            bx               lr
+  257 000000D4         
+  258 000000D4         
+  259 000000D4 F04F 0000 
+                       nope2   mov              r0, #0
+  260 000000D8 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  261 000000DC                 ENDFUNC
+  262 000000DC         
+  263 000000DC         
+  264 000000DC         
+  265 000000DC         ;------------------------------------------- do_2_comple
+                       ment (32bit) -------------------------------------------
+                       --
+  266 000000DC         ;--
+  267 000000DC         ;-- parametri: R0 = numero su cui effettuare il compleme
+                       nto a 2 (a 32 bit) -> inverto tutti i bit e sommo "1"
+  268 000000DC         ;--
+  269 000000DC         ;-- ritorno:      = valore in complemento a 2 calcolato
+  270 000000DC         ;--
+  271 000000DC         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  272 000000DC                 EXPORT           do_2_complement
+  273 000000DC         do_2_complement
+                               FUNCTION
+  274 000000DC E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  275 000000E0         ;number in r0
+  276 000000E0 EA6F 0000       mvn              r0, r0      ;inverto tutti i bi
+                                                            t di r0
+  277 000000E4 F100 0001       add              r0, r0, #1
+  278 000000E8 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  279 000000EC                 ENDFUNC
+  280 000000EC         
+  281 000000EC         
+  282 000000EC         
+  283 000000EC         ;------------------------------------------- do_2_comple
+                       ment (64bit) -------------------------------------------
+                       ---
+  284 000000EC         ;--
+  285 000000EC         ;-- parametri: R0 = parte alta (32 bit piu significativi
+                       )
+  286 000000EC         ;--            R1 = parte bassa (32 bit meno significati
+                       vi)
+  287 000000EC         ;--
+  288 000000EC         ;-- ritorno:   R0 = parte alta modificata (vero valore d
+
+
+
+ARM Macro Assembler    Page 7 
+
+
+                       i ritorno), R1 = parte bassa modificata (rimanenza => no
+                       n ripristinare)
+  289 000000EC         ;--
+  290 000000EC         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  291 000000EC                 EXPORT           do_2_complement_64
+  292 000000EC         do_2_complement_64
+                               FUNCTION
+  293 000000EC E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  294 000000F0         ;r0 UPPER 32 BITS
+  295 000000F0         ;r1 LOWER 32 BITS
+  296 000000F0         
+  297 000000F0         ;two's complement of both upper and lower bits
+  298 000000F0 EA6F 0000       mvn              r0, r0
+  299 000000F4 EA6F 0101       mvn              r1, r1
+  300 000000F8         ;add 1 to the lower 32 bits
+  301 000000F8         ;if the lower 32 bits are all 1 -> overflow -> this mean
+                       s we're gonna add 1 to the ;upper 32 bits instead
+  302 000000F8 1C49            adds             r1, r1, #1
+  303 000000FA         ;check if overflow of lower 32 bits
+  304 000000FA D701            bvc              no_overflow_2c ;no overflow
+  305 000000FC         ;overflow: propagate the sum of 1 to the upper 32 bits
+  306 000000FC F100 0001       add              r0, r0, #1
+  307 00000100         
+  308 00000100         ;RESULT IN R0 (UPPER BITS) AND R1 (LOWER BITS)
+  309 00000100 E8BD 8DF0 
+                       no_overflow_2c
+                               LDMFD            sp!,{r4-r8,r10-r11,pc}
+  310 00000104                 ENDFUNC
+  311 00000104         
+  312 00000104         
+  313 00000104         
+  314 00000104         ;------------------------------------------- count_leadi
+                       ng_zero-------------------------------------------------
+                       --
+  315 00000104         ;--
+  316 00000104         ;-- parametri: R0 = valore da analizzare => ritorna il n
+                       umero di '0' nella cifra binaria prima di avere un '1'
+  317 00000104         ;--
+  318 00000104         ;-- ritorno:   R0 = numero di '0' contati prima di avere
+                        un '1' (da sx a dx)
+  319 00000104         ;--
+  320 00000104         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  321 00000104                 EXPORT           count_leading_zero
+  322 00000104         count_leading_zero
+                               FUNCTION
+  323 00000104 46EC            MOV              r12, sp
+  324 00000106         ; ro is value to count leading zero  
+  325 00000106 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  326 0000010A         
+  327 0000010A FAB0 F080       CLZ              R0,R0       ;count leading zero
+                                                             
+  328 0000010E         
+  329 0000010E E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  330 00000112                 ENDFUNC
+  331 00000112         
+
+
+
+ARM Macro Assembler    Page 8 
+
+
+  332 00000112         
+  333 00000112         
+  334 00000112         ;------------------------------------------- count_bit1 
+                       --------------------------------------------------------
+                       --
+  335 00000112         ;--
+  336 00000112         ;-- parametri: R0 = valore da analizzare => voglio conta
+                       re su di esso il numero di bit a '1' presenti
+  337 00000112         ;--
+  338 00000112         ;-- ritorno:   R0 = numero di '1' presenti nel valore nu
+                       merico passato
+  339 00000112         ;--
+  340 00000112         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  341 00000112                 EXPORT           count_bit1
+  342 00000112         count_bit1
+                               FUNCTION
+  343 00000112         ; in R0 dovrà esserci il numero in cui bisogna contare 
+                       gli 1
+  344 00000112 46EC            MOV              r12, sp
+  345 00000114 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  346 00000118         
+  347 00000118 F04F 0120       MOV              R1, #32     ; numero di cifre d
+                                                            el numero (BINARIO)
+                                                            
+  348 0000011C F04F 0200       MOV              R2, #0      ; variabile che con
+                                                            terra il numero di 
+                                                            1
+  349 00000120         
+  350 00000120         loopCountBit1
+  351 00000120 0040            LSLS             R0, R0, #1
+  352 00000122 BF28 1C52       ADDCS            R2, R2, #1  ;incremento <=> car
+                                                            ry bit settato = il
+                                                             bit che abbiamo bu
+                                                            ttato fuori sopra e
+                                                            ra =1
+  353 00000126         
+  354 00000126 1E49            SUBS             R1, R1, #1
+  355 00000128 D1FA            BNE              loopCountBit1
+  356 0000012A         
+  357 0000012A 4610            MOV              R0, R2
+  358 0000012C         
+  359 0000012C E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  360 00000130                 ENDFUNC
+  361 00000130         
+  362 00000130         
+  363 00000130         
+  364 00000130         ;------------------------------------------- count_bit0 
+                       --------------------------------------------------------
+                       --
+  365 00000130         ;--
+  366 00000130         ;-- parametri: R0 = valore da analizzare => voglio conta
+                       re su di esso il numero di bit a '0' presenti
+  367 00000130         ;--
+  368 00000130         ;-- ritorno:   R0 = numero di '0' presenti nel valore nu
+                       merico passato
+  369 00000130         ;--
+  370 00000130         ;-------------------------------------------------------
+
+
+
+ARM Macro Assembler    Page 9 
+
+
+                       --------------------------------------------------------
+                       --
+  371 00000130                 EXPORT           count_bit0
+  372 00000130         count_bit0
+                               FUNCTION
+  373 00000130         ; in R0 dovrà esserci il numero in cui bisogna contare 
+                       gli 0
+  374 00000130 46EC            MOV              r12, sp
+  375 00000132 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  376 00000136         
+  377 00000136 F04F 0120       MOV              R1, #32     ; numero di cifre d
+                                                            el numero (BINARIO)
+                                                            
+  378 0000013A F04F 0200       MOV              R2, #0      ; variabile che con
+                                                            terra il numero di 
+                                                            0
+  379 0000013E         
+  380 0000013E         loopCountBit0
+  381 0000013E 0040            LSLS             R0, R0, #1
+  382 00000140 BF38 1C52       ADDCC            R2, R2, #1  ;incremento <=> car
+                                                            ry bit clear = il b
+                                                            it che abbiamo butt
+                                                            ato fuori sopra era
+                                                             =0
+  383 00000144         
+  384 00000144 1E49            SUBS             R1, R1, #1
+  385 00000146 D1FA            BNE              loopCountBit0
+  386 00000148         
+  387 00000148 4610            MOV              R0, R2
+  388 0000014A         
+  389 0000014A E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  390 0000014E                 ENDFUNC
+  391 0000014E         
+  392 0000014E         
+  393 0000014E         
+  394 0000014E         ;------------------------------------------- get_max ---
+                       --------------------------------------------------------
+                       --
+  395 0000014E         ;--
+  396 0000014E         ;-- parametri: R0 = indirizzo del vettore contenente i d
+                       ati da analizzare (vettore di celle da 32bit)
+  397 0000014E         ;--            R1 = dimensione del vettore da analizzare
+                        
+  398 0000014E         ;--
+  399 0000014E         ;-- ritorno:   R0 = valore massimo trovato tra quelli pr
+                       esenti nel vettore
+  400 0000014E         ;--
+  401 0000014E         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  402 0000014E                 EXPORT           get_max
+  403 0000014E         get_max FUNCTION
+  404 0000014E         
+  405 0000014E 46EC            MOV              r12, sp
+  406 00000150 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  407 00000154         
+  408 00000154 F850 6B04       LDR              R6, [R0], #4 ; Carica il primo 
+                                                            elemento dell'array
+                                                             in R6 (massimo ini
+
+
+
+ARM Macro Assembler    Page 10 
+
+
+                                                            ziale)
+  409 00000158 1E49            SUBS             R1, R1, #1  ; Decrementa la dim
+                                                            ensione (R1 = dim -
+                                                             1)
+  410 0000015A DD06            BLE              exitMax     ; Se R1 <= 0, salta
+                                                             direttamente all'u
+                                                            scita
+  411 0000015C         
+  412 0000015C         loopMax
+  413 0000015C F850 4B04       LDR              R4, [R0], #4 ; Carica l'element
+                                                            o corrente in R4 e 
+                                                            avanza il puntatore
+                                                             R0
+  414 00000160 42B4            CMP              R4, R6      ; Confronta l'eleme
+                                                            nto corrente (R4) c
+                                                            on il massimo attua
+                                                            le (R6)
+  415 00000162 BFC8 4626       MOVGT            R6, R4      ; Se R4 > R6, aggio
+                                                            rna il massimo in R
+                                                            6
+  416 00000166 1E49            SUBS             R1, R1, #1  ; Decrementa il con
+                                                            tatore R1
+  417 00000168 DCF8            BGT              loopMax     ; Ripeti finchè R1
+                                                             > 0
+  418 0000016A         
+  419 0000016A         exitMax
+  420 0000016A 4630            MOV              R0, R6      ; Salva il massimo 
+                                                            trovato in R0 (regi
+                                                            stro di ritorno)
+  421 0000016C         
+  422 0000016C E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  423 00000170                 ENDFUNC
+  424 00000170         
+  425 00000170         
+  426 00000170         
+  427 00000170         ;------------------------------------------- get_min ---
+                       --------------------------------------------------------
+                       --
+  428 00000170         ;--
+  429 00000170         ;-- parametri: R0 = indirizzo del vettore contenente i d
+                       ati da analizzare (vettore di celle da 32bit)
+  430 00000170         ;--            R1 = dimensione del vettore da analizzare
+                        
+  431 00000170         ;--
+  432 00000170         ;-- ritorno:   R0 = valore minimo trovato tra quelli pre
+                       senti nel vettore
+  433 00000170         ;--
+  434 00000170         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  435 00000170                 EXPORT           get_min
+  436 00000170         get_min FUNCTION
+  437 00000170         
+  438 00000170 46EC            MOV              r12, sp
+  439 00000172 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr} ; Salva 
+                                                            i registri callee-s
+                                                            aved nello stack
+  440 00000176         
+  441 00000176 F850 6B04       LDR              R6, [R0], #4 ; Carica il primo 
+
+
+
+ARM Macro Assembler    Page 11 
+
+
+                                                            elemento dell'array
+                                                             in R6 (minimo iniz
+                                                            iale)
+  442 0000017A 1E49            SUBS             R1, R1, #1  ; Decrementa la dim
+                                                            ensione (R1 = dim -
+                                                             1)
+  443 0000017C DD06            BLE              exitMin     ; Se R1 <= 0, salta
+                                                             direttamente all'u
+                                                            scita
+  444 0000017E         
+  445 0000017E         loopMin
+  446 0000017E F850 4B04       LDR              R4, [R0], #4 ; Carica l'element
+                                                            o corrente in R4 e 
+                                                            avanza il puntatore
+                                                             R0
+  447 00000182 42B4            CMP              R4, R6      ; Confronta l'eleme
+                                                            nto corrente (R4) c
+                                                            on il minimo attual
+                                                            e (R6)
+  448 00000184 BFB8 4626       MOVLT            R6, R4      ; Se R4 < R6, aggio
+                                                            rna il minimo in R6
+                                                            
+  449 00000188 1E49            SUBS             R1, R1, #1  ; Decrementa il con
+                                                            tatore R1
+  450 0000018A DCF8            BGT              loopMin     ; Ripeti finch� R
+                                                            1 > 0
+  451 0000018C         
+  452 0000018C         exitMin
+  453 0000018C 4630            MOV              R0, R6      ; Salva il minimo t
+                                                            rovato in R0 (regis
+                                                            tro di ritorno)
+  454 0000018E         
+  455 0000018E E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc} ; Ripris
+                                                            tina i registri e r
+                                                            itorna
+  456 00000192                 ENDFUNC
+  457 00000192         
+  458 00000192         
+  459 00000192         
+  460 00000192         ;------------------------------------- is_monotonic_incr
+                       easing -------------------------------------------------
+                       -
+  461 00000192         ;--
+  462 00000192         ;-- parametri: R0 = indirizzo del vettore contenente i v
+                       alori della funzione (vettore di celle da 32bit)
+  463 00000192         ;--            R1 = dimensione del vettore da analizzare
+                        
+  464 00000192         ;--
+  465 00000192         ;-- ritorno:   R0 = '1' se crescente, '0' se non crescen
+                       te
+  466 00000192         ;--
+  467 00000192         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  468 00000192                 EXPORT           is_monotonic_increasing
+  469 00000192         is_monotonic_increasing
+                               FUNCTION
+  470 00000192         
+  471 00000192 46EC            MOV              r12, sp
+
+
+
+ARM Macro Assembler    Page 12 
+
+
+  472 00000194 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr} ; Salva 
+                                                            i registri callee-s
+                                                            aved nello stack
+  473 00000198         
+  474 00000198 2901            CMP              R1, #1      ; Verifica se il ve
+                                                            ttore ha al massimo
+                                                             un elemento
+  475 0000019A DD0B            BLE              exitTrue_in ; Un vettore con 0 
+                                                            o 1 elemento � mo
+                                                            notono crescente
+  476 0000019C         
+  477 0000019C F850 4B04       LDR              R4, [R0], #4 ; Carica il primo 
+                                                            elemento dell'array
+                                                             in R4
+  478 000001A0 1E49            SUBS             R1, R1, #1  ; Decrementa la dim
+                                                            ensione (R1 = dim -
+                                                             1)
+  479 000001A2         
+  480 000001A2         loopCheck_in
+  481 000001A2 F850 5B04       LDR              R5, [R0], #4 ; Carica l'element
+                                                            o successivo in R5
+  482 000001A6 42AC            CMP              R4, R5      ; Confronta l'eleme
+                                                            nto precedente (R4)
+                                                             con l'elemento cor
+                                                            rente (R5)
+  483 000001A8 BFC8 2000       MOVGT            R0, #0      ; Se R4 > R5, il ve
+                                                            ttore non � monot
+                                                            ono crescente
+  484 000001AC DC05            BGT              exitFalse_in ; Esce con "false"
+                                                             (0) se non � mon
+                                                            otono crescente
+  485 000001AE 462C            MOV              R4, R5      ; Aggiorna R4 con l
+                                                            'elemento corrente
+  486 000001B0 1E49            SUBS             R1, R1, #1  ; Decrementa il con
+                                                            tatore R1
+  487 000001B2 DCF6            BGT              loopCheck_in ; Continua finch�
+                                                            � ci sono elementi 
+                                                            da verificare
+  488 000001B4         
+  489 000001B4         exitTrue_in
+  490 000001B4 F04F 0001       MOV              R0, #1      ; Imposta il risult
+                                                            ato a "true" (1)
+  491 000001B8 E001            B                endFunction_is_monotonic_increa
+sing 
+                                                            ; Salta alla fine
+  492 000001BA         
+  493 000001BA         exitFalse_in
+  494 000001BA F04F 0000       MOV              R0, #0      ; Imposta il risult
+                                                            ato a "false" (0)
+  495 000001BE         
+  496 000001BE         endFunction_is_monotonic_increasing
+  497 000001BE E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc} ; Ripris
+                                                            tina i registri e r
+                                                            itorna
+  498 000001C2                 ENDFUNC
+  499 000001C2         
+  500 000001C2         
+  501 000001C2         
+  502 000001C2         ;------------------------------------- is_monotonic_decr
+
+
+
+ARM Macro Assembler    Page 13 
+
+
+                       easing -------------------------------------------------
+                       -
+  503 000001C2         ;--
+  504 000001C2         ;-- parametri: R0 = indirizzo del vettore contenente i v
+                       alori della funzione (vettore di celle da 32bit)
+  505 000001C2         ;--            R1 = dimensione del vettore da analizzare
+                        
+  506 000001C2         ;--
+  507 000001C2         ;-- ritorno:   R0 = '1' se decrescente, '0' se non decre
+                       scente
+  508 000001C2         ;--
+  509 000001C2         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  510 000001C2                 EXPORT           is_monotonic_decreasing
+  511 000001C2         is_monotonic_decreasing
+                               FUNCTION
+  512 000001C2         
+  513 000001C2 46EC            MOV              r12, sp
+  514 000001C4 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr} ; Salva 
+                                                            i registri callee-s
+                                                            aved nello stack
+  515 000001C8         
+  516 000001C8 2901            CMP              R1, #1      ; Verifica se il ve
+                                                            ttore ha al massimo
+                                                             un elemento
+  517 000001CA DD0B            BLE              exitTrue_de ; Un vettore con 0 
+                                                            o 1 elemento � mo
+                                                            notono crescente
+  518 000001CC         
+  519 000001CC F850 4B04       LDR              R4, [R0], #4 ; Carica il primo 
+                                                            elemento dell'array
+                                                             in R4
+  520 000001D0 1E49            SUBS             R1, R1, #1  ; Decrementa la dim
+                                                            ensione (R1 = dim -
+                                                             1)
+  521 000001D2         
+  522 000001D2         loopCheck_de
+  523 000001D2 F850 5B04       LDR              R5, [R0], #4 ; Carica l'element
+                                                            o successivo in R5
+  524 000001D6 42AC            CMP              R4, R5      ; Confronta l'eleme
+                                                            nto precedente (R4)
+                                                             con l'elemento cor
+                                                            rente (R5)
+  525 000001D8 BFB8 2000       MOVLT            R0, #0      ; Se R4 < R5, il ve
+                                                            ttore non è monoto
+                                                            no decrescente
+  526 000001DC DB05            BLT              exitFalse_de ; Esce con "false"
+                                                             (0) se non è mono
+                                                            tono decrescente
+  527 000001DE 462C            MOV              R4, R5      ; Aggiorna R4 con l
+                                                            'elemento corrente
+  528 000001E0 1E49            SUBS             R1, R1, #1  ; Decrementa il con
+                                                            tatore R1
+  529 000001E2 DCF6            BGT              loopCheck_de ; Continua finchè
+                                                             ci sono elementi d
+                                                            a verificare
+  530 000001E4         
+  531 000001E4         exitTrue_de
+
+
+
+ARM Macro Assembler    Page 14 
+
+
+  532 000001E4 F04F 0001       MOV              R0, #1      ; Imposta il risult
+                                                            ato a "true" (1)
+  533 000001E8 E001            B                endFunction_is_monotonic_decrea
+sing 
+                                                            ; Salta alla fine
+  534 000001EA         
+  535 000001EA         exitFalse_de
+  536 000001EA F04F 0000       MOV              R0, #0      ; Imposta il risult
+                                                            ato a "false" (0)
+  537 000001EE         
+  538 000001EE         endFunction_is_monotonic_decreasing
+  539 000001EE E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc} ; Ripris
+                                                            tina i registri e r
+                                                            itorna
+  540 000001F2                 ENDFUNC
+  541 000001F2         
+  542 000001F2         
+  543 000001F2         ;------------------------------------- sub_abs ---------
+                       --------------------------------------------------------
+                       -
+  544 000001F2         ;--
+  545 000001F2         ;-- parametri: R0 = operando 1
+  546 000001F2         ;--            R1 = operando 2
+  547 000001F2         ;--
+  548 000001F2         ;-- ritorno:   R0 = (R0 - R1) se questa è >0, altriment
+                       i -(RO - R1)
+  549 000001F2         ;--
+  550 000001F2         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  551 000001F2                 EXPORT           abs_value
+  552 000001F2         abs_value
+                               FUNCTION
+  553 000001F2         ; save current SP for a faster access 
+  554 000001F2         ; to parameters in the stack
+  555 000001F2 46EC            MOV              r12, sp
+  556 000001F4         ; save volatile registers
+  557 000001F4 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr}
+  558 000001F8         
+  559 000001F8 4288            CMP              R0,R1
+  560 000001FA         ;r0<=r1
+  561 000001FA BFB4 EBC0 
+              0001             RSBLT            R0,R0,R1    ;r1-r0
+  562 00000200         ;r0>r1
+  563 00000200 1A40            SUBGE            R0,R0,R1    ;r0-r1
+  564 00000202         
+  565 00000202         ; setup a value for R0 to return
+  566 00000202         ; restore volatile registers
+  567 00000202 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  568 00000206         
+  569 00000206                 ENDFUNC
+  570 00000206         
+  571 00000206         
+  572 00000206         
+  573 00000206         ;------------------------------------- value_is_in_range
+                        -------------------------------------------------------
+                       --
+  574 00000206         ;--
+  575 00000206         ;-- parametri: R0 = valore considerato da ricercare
+
+
+
+ARM Macro Assembler    Page 15 
+
+
+  576 00000206         ;--            R1 = estremo inferiore (min) del range
+  577 00000206         ;--       R2 = estremo superiore (max) del range
+  578 00000206         ;--
+  579 00000206         ;-- ritorno:   '1' se valore compreso tra min e max, '0'
+                        altrimenti
+  580 00000206         ;--
+  581 00000206         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  582 00000206                 EXPORT           value_is_in_a_range
+  583 00000206         value_is_in_a_range
+                               FUNCTION
+  584 00000206         ; Save current SP for faster access to parameters in the
+                        stack
+  585 00000206 46EC            MOV              r12, sp
+  586 00000208         ; Save volatile registers
+  587 00000208 E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  588 0000020C         
+  589 0000020C         ; Compare VALUE with MIN
+  590 0000020C 4288            CMP              R0, R1
+  591 0000020E D304            BLO              outOfRange  ; If VALUE < MIN, b
+                                                            ranch to outOfRange
+                                                            
+  592 00000210         
+  593 00000210         ; Compare VALUE with MAX
+  594 00000210 4290            CMP              R0, R2
+  595 00000212 D802            BHI              outOfRange  ; If VALUE > MAX, b
+                                                            ranch to outOfRange
+                                                            
+  596 00000214         
+  597 00000214         ; If VALUE is within the range
+  598 00000214 F04F 0001       MOV              R0, #1      ; Set R0 to 1 (true
+                                                            )
+  599 00000218 E001            B                exitFuncV   ; Branch to exit
+  600 0000021A         
+  601 0000021A         outOfRange
+  602 0000021A F04F 0000       MOV              R0, #0      ; Set R0 to 0 (fals
+                                                            e)
+  603 0000021E         
+  604 0000021E         exitFuncV
+  605 0000021E         ; Restore volatile registers
+  606 0000021E E8BD 8DF0       LDMFD            sp!, {r4-r8, r10-r11, pc}
+  607 00000222         
+  608 00000222                 ENDFUNC
+  609 00000222         
+  610 00000222         
+  611 00000222         
+  612 00000222         ;------------------------------------------ array_sum --
+                       --------------------------------------------------------
+                       --
+  613 00000222         ;--
+  614 00000222         ;-- parametri: R0 = indirizzo del vettore considerato (c
+                       omposto da elementi in 8bit)
+  615 00000222         ;--            R1 = numero di elementi del vettore
+  616 00000222         ;--
+  617 00000222         ;-- ritorno:   somma di tutti gli elementi contenuti nel
+                        vettore
+  618 00000222         ;--
+  619 00000222         ;-------------------------------------------------------
+
+
+
+ARM Macro Assembler    Page 16 
+
+
+                       --------------------------------------------------------
+                       --
+  620 00000222                 EXPORT           array_sum
+  621 00000222         array_sum
+                               FUNCTION
+  622 00000222         ; Save current SP for faster access to parameters in the
+                        stack
+  623 00000222 46EC            MOV              r12, sp
+  624 00000224         ; Save volatile registers
+  625 00000224 E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  626 00000228         ;--------- INIZIO CODICE ------------
+  627 00000228 F04F 0400       MOV              r4, #0      ;inizializzo il con
+                                                            tatore del ciclo a 
+                                                            0
+  628 0000022C F04F 0500       MOV              r5, #0      ;inizializzo il som
+                                                            matore degli elemen
+                                                            ti del ciclo a 0
+  629 00000230         for_array_sum
+  630 00000230 428C            CMP              R4,R1       ;confronto r5 e r1
+  631 00000232 D004            BEQ              end_for_array_sum ;se ho ciclat
+                                                            o su tutti gli elem
+                                                            enti => fine
+  632 00000234         ;dentro il ciclo
+  633 00000234 5D06            LDRB             R6, [R0, R4] ;r6= vett[r4] NB: 
+                                                            non metto ",LSL #2"
+                                                             perche non sto lav
+                                                            orando con word ma 
+                                                            con byte => uso LDR
+                                                            B
+  634 00000236         ;LDR R6, [R0, R4, LSL#2]
+  635 00000236 4435            ADD              R5, R5, R6  ;sommatore+= vett[r
+                                                            4]
+  636 00000238         ;incremento il contatore
+  637 00000238 F104 0401       ADD              R4,R4,#1    ;R4++
+  638 0000023C E7F8            B                for_array_sum
+  639 0000023E         end_for_array_sum
+  640 0000023E 4628            MOV              R0, R5      ;ritorno la somma r
+                                                            isultante
+  641 00000240 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  642 00000244                 ENDFUNC
+  643 00000244         
+  644 00000244         
+  645 00000244         
+  646 00000244         ;------------------------------------------ array_avg --
+                       --------------------------------------------------------
+                       --
+  647 00000244         ;--
+  648 00000244         ;-- parametri: R0 = indirizzo del vettore considerato (c
+                       omposto da elementi in 8bit)
+  649 00000244         ;--            R1 = numero di elementi del vettore
+  650 00000244         ;--
+  651 00000244         ;-- ritorno:   media tra tutti gli elementi contenuti ne
+                       l vettore
+  652 00000244         ;--
+  653 00000244         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  654 00000244                 EXPORT           array_avg
+  655 00000244         array_avg
+
+
+
+ARM Macro Assembler    Page 17 
+
+
+                               FUNCTION
+  656 00000244         
+  657 00000244         ; Save current SP for faster access to parameters in the
+                        stack
+  658 00000244 46EC            MOV              r12, sp
+  659 00000246         ; Save volatile registers
+  660 00000246 E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  661 0000024A         ;--------- INIZIO CODICE ------------
+  662 0000024A         ;chiamata alla procedura dove userò come parametri R0 e
+                        R1 
+  663 0000024A         ;faccio la somma
+  664 0000024A F7FF FFFE       BL               array_sum
+  665 0000024E         ;faccio la divisione (in r0 ho il numeratore ottenuto da
+                        array_sum e in r1 ho ancora la dimensione da prima
+  666 0000024E FBB0 F0F1       UDIV             r0, r0, r1
+  667 00000252         ;ho in r0 il risultato della divisione = media
+  668 00000252 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  669 00000256                 ENDFUNC
+  670 00000256         
+  671 00000256         ;------------------------------------------ array_search
+                        -------------------------------------------------------
+                       -----
+  672 00000256         ;--
+  673 00000256         ;-- parametri: R0 = indirizzo del vettore considerato (c
+                       omposto da elementi in 8bit)
+  674 00000256         ;--            R1 = numero di elementi del vettore
+  675 00000256         ;--            R2 = elemento da ricercare nell'array
+  676 00000256         ;--
+  677 00000256         ;-- ritorno:   R0= indice posizionale dell'elemento se t
+                       rovato, altrimenti R0= dimensione vettore
+  678 00000256         ;--
+  679 00000256         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  680 00000256                 EXPORT           array_search
+  681 00000256         array_search
+                               FUNCTION
+  682 00000256         
+  683 00000256         ; Save current SP for faster access to parameters in the
+                        stack
+  684 00000256 46EC            MOV              r12, sp
+  685 00000258         ; Save volatile registers
+  686 00000258 E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  687 0000025C         ;--------- INIZIO CODICE ------------
+  688 0000025C F04F 0400       MOV              R4, #0      ;inizializzo il cic
+                                                            lo del contatore a 
+                                                            0
+  689 00000260         
+  690 00000260 428C    for_array_search
+                               CMP              R4,R1       ;confronto il conta
+                                                            tore con il numero 
+                                                            di elementi del vet
+                                                            tore
+  691 00000262 D005            BEQ              endfor_array_search
+  692 00000264         ;dentro il ciclo
+  693 00000264 5D05            LDRB             R5, [R0, R4] ;R5= vett[R4]
+  694 00000266         ;LDR R5, [R0, R4, LSL#2] (se lavoro con i 32 bit)
+  695 00000266         
+  696 00000266         ;confronto il valore dell'elemento corrente con quello d
+
+
+
+ARM Macro Assembler    Page 18 
+
+
+                       a verificare
+  697 00000266 4295            CMP              R5, R2
+  698 00000268 D002            BEQ              endfor_array_search ;se vett[R4
+                                                            ]= elemento cercato
+                                                             => fine 
+  699 0000026A         
+  700 0000026A         ;altrimenti continuo
+  701 0000026A F104 0401       ADD              R4,R4, #1   ;R4++
+  702 0000026E E7F7            B                for_array_search
+  703 00000270         
+  704 00000270         endfor_array_search                  ;fine ciclo 
+  705 00000270 4620            MOV              R0, R4      ;metto in r0 l'iter
+                                                            azione a cui sono a
+                                                            rrivato => se ugual
+                                                            e alla dimensione d
+                                                            el vettore => non t
+                                                            rovato
+  706 00000272         
+  707 00000272         ;ho in r0 l'indice posizionale dell'elemento nell'array
+  708 00000272 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  709 00000276                 ENDFUNC
+  710 00000276         
+  711 00000276         
+  712 00000276         
+  713 00000276         ;------------------------------------------ array_max_di
+                       fference -----------------------------------------------
+                       --
+  714 00000276         ;--
+  715 00000276         ;-- parametri: R0 = indirizzo del vettore considerato (c
+                       omposto da elementi in 8bit)
+  716 00000276         ;--            R1 = numero di elementi del vettore
+  717 00000276         ;--
+  718 00000276         ;-- ritorno:   R0= valore della massima differenza tra g
+                       li elementi del vettore
+  719 00000276         ;--
+  720 00000276         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  721 00000276                 EXPORT           array_max_difference
+  722 00000276         array_max_difference
+                               FUNCTION
+  723 00000276         
+  724 00000276         ; Save current SP for faster access to parameters in the
+                        stack
+  725 00000276 46EC            MOV              r12, sp
+  726 00000278         ; Save volatile registers
+  727 00000278 E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  728 0000027C         ;--------- INIZIO CODICE ------------
+  729 0000027C         
+  730 0000027C         ;calcolo il massimo
+  731 0000027C B40F            PUSH{r0,         r1, r2, r3}
+  732 0000027E F7FF FFFE       BL               get_max
+  733 00000282         ;salvo il massimo in r5
+  734 00000282 4605            MOV              r5, r0
+  735 00000284 BC0F            POP{r0,          r1, r2, r3}
+  736 00000286         
+  737 00000286         ;calcolo il minimo
+  738 00000286 B40F            PUSH{r0,         r1, r2, r3}
+  739 00000288 F7FF FFFE       BL               get_min
+
+
+
+ARM Macro Assembler    Page 19 
+
+
+  740 0000028C         ;salvo il minimo in r6
+  741 0000028C 4606            MOV              r6, r0
+  742 0000028E BC0F            POP{r0,          r1, r2, r3}
+  743 00000290         
+  744 00000290         ;metto in r0 la massima differenza computata come massim
+                       o - minimo
+  745 00000290 EBA5 0006       SUB              r0, r5,r6   ;valore di ritorno 
+                                                            = massimo-minimo de
+                                                            l vettore
+  746 00000294         
+  747 00000294         ;ho in r0 l'indice posizionale dell'elemento nell'array
+  748 00000294 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  749 00000298                 ENDFUNC
+  750 00000298         
+  751 00000298         
+  752 00000298         
+  753 00000298         ;----------------------------------------------- ascii_t
+                       o_int --------------------------------------------------
+                       --
+  754 00000298         ;--
+  755 00000298         ;-- parametri: R0 = indirizzo del numero in formato stri
+                       nga (ascii) da convertire (vettore di char=8bit) => term
+                       ina con \0
+  756 00000298         ;--
+  757 00000298         ;-- ritorno:   R0= valore intero corrispondente (UNSIGNE
+                       D)
+  758 00000298         ;--
+  759 00000298         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  760 00000298                 EXPORT           ascii_to_int
+  761 00000298         ascii_to_int
+                               FUNCTION
+  762 00000298         
+  763 00000298         ; Save current SP for faster access to parameters in the
+                        stack
+  764 00000298 46EC            MOV              r12, sp
+  765 0000029A         ; Save volatile registers
+  766 0000029A E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  767 0000029E         ;--------- INIZIO CODICE ------------
+  768 0000029E         
+  769 0000029E 4604            MOV              R4, R0      ;R4 = Puntatore str
+                                                            inga
+  770 000002A0 F04F 0000       MOV              R0, #0      ;R0 = Risultato acc
+                                                            umulatore
+  771 000002A4 F04F 050A       MOV              R5, #10     ;Costante 10 per mo
+                                                            ltiplicazione
+  772 000002A8         
+  773 000002A8         loop_atoi
+  774 000002A8 F814 6B01       LDRB             R6, [R4], #1 ;Carica carattere 
+                                                            e avanza
+  775 000002AC         
+  776 000002AC         ;Controllo fine stringa ='0'
+  777 000002AC 2E00            CMP              R6, #0
+  778 000002AE D009            BEQ              end_atoi
+  779 000002B0         
+  780 000002B0         ;Controllo se è un numero ('0'=48, '9'=57)
+  781 000002B0 2E30            CMP              R6, #48
+  782 000002B2 DB07            BLT              end_atoi    ; Se < '0', fine (c
+
+
+
+ARM Macro Assembler    Page 20 
+
+
+                                                            arattere non valido
+                                                            )
+  783 000002B4 2E39            CMP              R6, #57
+  784 000002B6 DC05            BGT              end_atoi    ; Se > '9', fine (c
+                                                            arattere non valido
+                                                            )
+  785 000002B8         
+  786 000002B8         ;Non ho saltato => procedo con la conversione in intero
+  787 000002B8 F1A6 0630       SUB              R6, R6, #48 ;= digit es: voglio
+                                                             avere '3' => carat
+                                                            tere ascii-48 = 3
+  788 000002BC         
+  789 000002BC         ;Formula: tot = (tot * 10) + digit
+  790 000002BC FB00 F005       MUL              R0, R0, R5  ; R0= R0 * 10
+  791 000002C0 4430            ADD              R0, R0, R6  ; R0= R0 + digit
+  792 000002C2         ;torno su
+  793 000002C2 E7F1            B                loop_atoi
+  794 000002C4         
+  795 000002C4         end_atoi
+  796 000002C4         
+  797 000002C4         ;ho in r0 il valore intero convertito
+  798 000002C4 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  799 000002C8                 ENDFUNC
+  800 000002C8         
+  801 000002C8         
+  802 000002C8         
+  803 000002C8         ;----------------------------------------------- int_to_
+                       ascii --------------------------------------------------
+                       --
+  804 000002C8         ;--
+  805 000002C8         ;-- parametri: R0 = numero intero (32bit) da convertire 
+                       in stringa
+  806 000002C8         ;--      R1 = indirizzo della cella di memoria in cui sc
+                       rivere la stringa 
+  807 000002C8         ;-- ritorno:   X
+  808 000002C8         ;--
+  809 000002C8         ;-------------------------------------------------------
+                       --------------------------------------------------------
+                       --
+  810 000002C8                 EXPORT           int_to_ascii
+  811 000002C8         int_to_ascii
+                               FUNCTION
+  812 000002C8         
+  813 000002C8         ; Save current SP for faster access to parameters in the
+                        stack
+  814 000002C8 46EC            MOV              r12, sp
+  815 000002CA         ; Save volatile registers
+  816 000002CA E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  817 000002CE         ;--------- INIZIO CODICE ------------
+  818 000002CE         
+  819 000002CE 4604            MOV              R4, R0      ;R4= numero da conv
+                                                            ertire
+  820 000002D0 F04F 0500       MOV              R5, #0      ;R5= contatore cifr
+                                                            e
+  821 000002D4 F04F 060A       MOV              R6, #10     ;R6= costante di di
+                                                            visione => 10
+  822 000002D8         
+  823 000002D8         ;caso particolare => =0 (loop non partirebbe => me ne oc
+                       cupo subito)
+
+
+
+ARM Macro Assembler    Page 21 
+
+
+  824 000002D8 2C00            CMP              R4, #0
+  825 000002DA D104            BNE              loop_extract_itoa
+  826 000002DC F04F 0030       MOV              R0, #48     ;ASCII di '0'
+  827 000002E0 F801 0B01       STRB             R0, [R1], #1
+  828 000002E4 E016            B                terminate_string_itoa
+  829 000002E6         
+  830 000002E6         ;ciclo di estrazione delle cifre
+  831 000002E6         loop_extract_itoa
+  832 000002E6 2C00            CMP              R4, #0
+  833 000002E8 D00D            BEQ              loop_store_itoa ;se numero=0 =>
+                                                             ho finito di estra
+                                                            rre!
+  834 000002EA         
+  835 000002EA         ;calcolo r4/10 e rest0
+  836 000002EA FBB4 F7F6       UDIV             R7, R4, R6  ;R7= R4/10 (Quozien
+                                                            te)
+  837 000002EE FB07 F806       MUL              R8, R7, R6  ;R8= Quoziente*10
+  838 000002F2 EBA4 0808       SUB              R8, R4, R8  ;R8= R4-R8 = resto 
+                                                            =cifra che ci inter
+                                                            essa
+  839 000002F6         
+  840 000002F6         ;converto la cifra in ASCII (es. 3 -> '3')
+  841 000002F6 F108 0830       ADD              R8, R8, #48 ;sommo 48
+  842 000002FA         
+  843 000002FA F84D 8D04       PUSH             {R8}        ;salvo nello stack 
+                                                            => devo invertire l
+                                                            'ordine
+  844 000002FE F105 0501       ADD              R5, R5, #1  ;incremento contato
+                                                            re cifre trovate
+  845 00000302         
+  846 00000302 463C            MOV              R4, R7      ;aggiorno il numero
+                                                             => n/=10
+  847 00000304 E7EF            B                loop_extract_itoa
+  848 00000306         
+  849 00000306         loop_store_itoa
+  850 00000306         ;scrivo in memoria il risultato
+  851 00000306 2D00            CMP              R5, #0
+  852 00000308 D004            BEQ              terminate_string_itoa
+  853 0000030A         
+  854 0000030A BC01            POP              {R0}        ;recupero la cifra 
+                                                            in ordine inverso
+  855 0000030C F801 0B01       STRB             R0, [R1], #1 ;scrivo in memeori
+                                                            a la cifra e avanzo
+                                                             il puntatore
+  856 00000310 1E6D            SUBS             R5, R5, #1  ;decremento il cont
+                                                            atore che conta le 
+                                                            cifre rimaste
+  857 00000312 E7F8            B                loop_store_itoa
+  858 00000314         
+  859 00000314         terminate_string_itoa
+  860 00000314         ;aggiungo il carattere di fine stringa'\0'
+  861 00000314 F04F 0000       MOV              R0, #0
+  862 00000318 7008            STRB             R0, [R1]
+  863 0000031A         
+  864 0000031A E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  865 0000031E                 ENDFUNC
+  866 0000031E         
+  867 0000031E         
+  868 0000031E         
+
+
+
+ARM Macro Assembler    Page 22 
+
+
+  869 0000031E         ;----------------------- FUNZIONE RICHIESTA ------------
+                       ------------------------------------
+  870 0000031E                 EXPORT           nome_funzione_richiesta
+  871 0000031E         nome_funzione_richiesta
+                               FUNCTION
+  872 0000031E         
+  873 0000031E         ; Save current SP for faster access to parameters in the
+                        stack
+  874 0000031E 46EC            MOV              r12, sp
+  875 00000320         ; Save volatile registers
+  876 00000320 E92D 4DF0       STMFD            sp!, {r4-r8, r10-r11, lr}
+  877 00000324         ;--------- INIZIO CODICE --------- 
+  878 00000324         
+  879 00000324         ;--------- FINE CODICE ---------- 
+  880 00000324 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  881 00000328                 ENDFUNC
+  882 00000328         
+  883 00000328         ;----------------------- FINE FUNZIONE RICHIESTA -------
+                       ---------------------------------------- 
+  884 00000328         
+  885 00000328         ;-----------------------PROVE ESAME --------------------
+                       -------------------------------------------;
+  886 00000328         
+  887 00000328         ; ------------------------------------------------------
+                       ---------------------------
+  888 00000328         ; compute_statistics: Calcola statistiche passeggeri.
+  889 00000328         ; Input: R0=Salita[], R1=Discesa[], R2=LenSalita, R3=Len
+                       Discesa, [SP+32]=PtrMaxOut
+  890 00000328         ; Output: R0 = Tempo totale trascorso con il numero mass
+                       imo di passeggeri a bordo
+  891 00000328         ; ------------------------------------------------------
+                       ---------------------------
+  892 00000328                 EXPORT           compute_statistics
+  893 00000328         compute_statistics
+                               FUNCTION
+  894 00000328 E92D 4DF0       STMFD            sp!,{r4-r8,r10-r11,lr} 
+                                                            ; Save context
+  895 0000032C         
+  896 0000032C 9C08            LDR              r4, [sp, #32] ; Load 5th param 
+                                                            (MaxPass ptr)
+  897 0000032E         
+  898 0000032E         ; Init
+  899 0000032E 4605            MOV              R5, R0      ; R5 = Salita ptr c
+                                                            opy
+  900 00000330 F04F 0000       MOV              R0, #0      ; R0 = Total Time (
+                                                            Result)
+  901 00000334 F04F 0600       MOV              R6, #0      ; R6 = Current Pass
+                                                            engers
+  902 00000338 F04F 0700       MOV              R7, #0      ; R7 = Max Passenge
+                                                            rs Recorded
+  903 0000033C F04F 0B00       MOV              R11, #0     ; R11 = Prev Time
+  904 00000340 F04F 0C00       MOV              R12, #0     ; R12 = Delta Time
+  905 00000344         
+  906 00000344         outerloop
+  907 00000344 2A00            CMP              R2, #0      ; Salita finished?
+  908 00000346 D024            BEQ              exity
+  909 00000348         
+  910 00000348 F8D5 8000       LDR              R8, [R5]    ; R8 = Next Salita 
+                                                            Time
+
+
+
+ARM Macro Assembler    Page 23 
+
+
+  911 0000034C F8D1 9000       LDR              R9, [R1]    ; R9 = Next Discesa
+                                                             Time
+  912 00000350         
+  913 00000350         ; --- Time Calculation ---
+  914 00000350 45C8            CMP              R8, R9
+  915 00000352 BFB8 46C2       MOVLT            R10, R8     ; R10 = Current Eve
+                                                            nt Time (Min)
+  916 00000356 BFC8 46CA       MOVGT            R10, R9
+  917 0000035A         
+  918 0000035A EBAA 0C0B       SUB              R12, R10, R11 ; Delta = Current
+                                                             - Prev
+  919 0000035E 46D3            MOV              R11, R10    ; Update Prev
+  920 00000360         
+  921 00000360         ; --- Accumulate Time ---
+  922 00000360 42BE            CMP              R6, R7      ; If Current == Max
+                                                            
+  923 00000362 BF08 4460       ADDEQ            R0, R0, R12 ; Add Delta to Tota
+                                                            l Time in R0
+  924 00000366         
+  925 00000366         ; --- Next Step Decision ---
+  926 00000366 45C8            CMP              R8, R9
+  927 00000368 DC0B            BGT              next_discesa ; Salita > Discesa
+                                                            
+  928 0000036A DBFF            BLT              next_salita ; Salita < Discesa
+  929 0000036C         
+  930 0000036C         next_salita
+  931 0000036C F106 0601       ADD              R6, R6, #1  ; Pass++
+  932 00000370         
+  933 00000370 42B7            CMP              R7, R6
+  934 00000372 BFBC 4637       MOVLT            R7, R6      ; Update Max if new
+                                                             record
+  935 00000376 2000            MOVLT            R0, #0      ; Reset time R0 if 
+                                                            new max found
+  936 00000378         
+  937 00000378 F105 0504       ADD              R5, R5, #4  ; Ptr++
+  938 0000037C F102 32FF       ADD              R2, R2, #-1 ; Count--
+  939 00000380 E7E0            B                outerloop
+  940 00000382         
+  941 00000382         next_discesa
+  942 00000382 F106 36FF       ADD              R6, R6, #-1 ; Pass--
+  943 00000386         
+  944 00000386 2B00            CMP              R3, #0      ; Check Discesa bou
+                                                            nds
+  945 00000388 BF1C 1D09       ADDNE            R1, R1, #4  ; Ptr++
+  946 0000038C F103 33FF       ADDNE            R3, R3, #-1 ; Count--
+  947 00000390 E7D8            B                outerloop
+  948 00000392         
+  949 00000392         exity
+  950 00000392 7027            STRB             R7, [R4]    ; Store Max Passeng
+                                                            ers to memory
+  951 00000394         
+  952 00000394         ; Alla fine: R0 = Tempo totale trascorso alla massima oc
+                       cupazione
+  953 00000394 E8BD 8DF0       LDMFD            sp!,{r4-r8,r10-r11,pc}
+  954 00000398                 ENDFUNC
+  955 00000398         
+  956 00000398         
+  957 00000398         
+  958 00000398         ; ------------------------------------------------------
+
+
+
+ARM Macro Assembler    Page 24 
+
+
+                       ---------------------------
+  959 00000398         ; vincitore: Trova i primi 3 valori massimi in un array 
+                       e li salva nei puntatori.
+  960 00000398         ; Input: R0=Votazioni[], R1=N, R2=Ptr1°, R3=Ptr2°, [SP
+                       +32]=Ptr3°
+  961 00000398         ; Nota: La funzione "distrugge" i vincitori nell'array o
+                       riginale mettendoli a 0.
+  962 00000398         ; ------------------------------------------------------
+                       ---------------------------
+  963 00000398                 EXPORT           vincitore
+  964 00000398         vincitore
+                               FUNCTION
+  965 00000398 E92D 47F0       PUSH             {R4-R10, LR}
+  966 0000039C         
+  967 0000039C 9C08            LDR              R4, [SP, #32] ; Carico puntator
+                                                            e 3° posto dallo s
+                                                            tack
+  968 0000039E 4605            MOV              R5, R0      ; R5 = Base Array
+  969 000003A0 F1A1 0901       SUB              R9, R1, #1  ; R9 = Indice Ultim
+                                                            o Elemento (N-1)
+  970 000003A4 F04F 0A00       MOV              R10, #0     ; R10 = Contatore p
+                                                            odio (0=Start, 1=1s
+                                                            t, 2=2nd, 3=3rd)
+  971 000003A8         
+  972 000003A8         search_restart
+  973 000003A8         ; --- Reset variabili per nuova ricerca ---
+  974 000003A8 464F            MOV              R7, R9      ; R7 = Indice corre
+                                                            nte (parte dal fond
+                                                            o)
+  975 000003AA 4649            MOV              R1, R9      ; R1 = Indice del M
+                                                            ax temporaneo
+  976 000003AC F855 6021       LDR              R6, [R5, R1, LSL #2] ; R6 = Val
+                                                            ore Max temporaneo 
+                                                            (V[N-1])
+  977 000003B0         
+  978 000003B0         inner_loop
+  979 000003B0 2F00            CMP              R7, #0      ; Finito array?
+  980 000003B2 D008            BEQ              found_max   ; Se sì, abbiamo t
+                                                            rovato il vincitore
+                                                             corrente
+  981 000003B4         
+  982 000003B4 F1A7 0701       SUB              R7, R7, #1  ; i--
+  983 000003B8 F855 8027       LDR              R8, [R5, R7, LSL #2] 
+                                                            ; R8 = V[i]
+  984 000003BC         
+  985 000003BC 45B0            CMP              R8, R6      ; Confronto V[i] co
+                                                            n Max Attuale
+  986 000003BE BFC4 4646       MOVGT            R6, R8      ; Se V[i] > Max, ag
+                                                            giorna valore Max
+  987 000003C2 4639            MOVGT            R1, R7      ; Se V[i] > Max, ag
+                                                            giorna indice Max
+  988 000003C4         
+  989 000003C4 E7F4            B                inner_loop  ; Continua ricerca
+  990 000003C6         
+  991 000003C6         found_max
+  992 000003C6         ; --- Gestione Vincitore Trovato ---
+  993 000003C6 F04F 0C00       MOV              R12, #0
+  994 000003CA F845 C021       STR              R12, [R5, R1, LSL #2] ; Azzero 
+                                                            il valore nell'arra
+
+
+
+ARM Macro Assembler    Page 25 
+
+
+                                                            y per non ritrovarl
+                                                            o dopo
+  995 000003CE         
+  996 000003CE F10A 0A01       ADD              R10, R10, #1 ; Podio step ++
+  997 000003D2         
+  998 000003D2 F1BA 0F01       CMP              R10, #1
+  999 000003D6 D005            BEQ              store_1st
+ 1000 000003D8 F1BA 0F02       CMP              R10, #2
+ 1001 000003DC D004            BEQ              store_2nd
+ 1002 000003DE F1BA 0F03       CMP              R10, #3
+ 1003 000003E2 D003            BEQ              store_3rd
+ 1004 000003E4         
+ 1005 000003E4         store_1st
+ 1006 000003E4 6016            STR              R6, [R2]    ; Salva valore 1° 
+                                                            posto
+ 1007 000003E6 E7DF            B                search_restart 
+                                                            ; Cerca il prossimo
+                                                            
+ 1008 000003E8         
+ 1009 000003E8         store_2nd
+ 1010 000003E8 601E            STR              R6, [R3]    ; Salva valore 2° 
+                                                            posto
+ 1011 000003EA E7DD            B                search_restart 
+                                                            ; Cerca il prossimo
+                                                            
+ 1012 000003EC         
+ 1013 000003EC         store_3rd
+ 1014 000003EC 6026            STR              R6, [R4]    ; Salva valore 3° 
+                                                            posto
+ 1015 000003EE         ; Finito, esco.
+ 1016 000003EE         
+ 1017 000003EE E8BD 87F0       POP              {R4-R10, PC}
+ 1018 000003F2                 ENDFUNC
+ 1019 000003F2         
+ 1020 000003F2         
+ 1021 000003F2         
+ 1022 000003F2         ; ------------------------------------------------------
+                       ---------------------------
+ 1023 000003F2         ; Funzione: fibonacci
+ 1024 000003F2         ;
+ 1025 000003F2         ; 1. COSA FA:
+ 1026 000003F2         ;    - Genera una sequenza di Fibonacci di lunghezza 'n'
+                        partendo da due semi (num1, num2).
+ 1027 000003F2         ;    - Memorizza la sequenza nell'array puntato da 'vett
+                       _fib'.
+ 1028 000003F2         ;    - Confronta gli elementi di un secondo array 'vett_
+                       random' con la sequenza generata.
+ 1029 000003F2         ;    - Conta quanti numeri del 'vett_random' sono presen
+                       ti nella serie di Fibonacci (Intersezione).
+ 1030 000003F2         ;
+ 1031 000003F2         ; 2. PARAMETRI IN INGRESSO:
+ 1032 000003F2         ;    R0 = num1 (Primo numero della serie)
+ 1033 000003F2         ;    R1 = num2 (Secondo numero della serie)
+ 1034 000003F2         ;    R2 = n    (Lunghezza della serie di Fibonacci da ge
+                       nerare)
+ 1035 000003F2         ;    R3 = m    (Lunghezza del vettore di numeri casuali)
+                       
+ 1036 000003F2         ;    STACK 5° Argomento ([SP+36]) = Indirizzo base di V
+                       ETT_RANDOM
+
+
+
+ARM Macro Assembler    Page 26 
+
+
+ 1037 000003F2         ;    STACK 6° Argomento ([SP+40]) = Indirizzo base di V
+                       ETT_FIB
+ 1038 000003F2         ;
+ 1039 000003F2         ; 3. PARAMETRI IN USCITA:
+ 1040 000003F2         ;    R0 = Numero di corrispondenze trovate (Count delle 
+                       intersezioni)
+ 1041 000003F2         ; ------------------------------------------------------
+                       ---------------------------
+ 1042 000003F2                 EXPORT           fibonacci
+ 1043 000003F2         fibonacci
+                               FUNCTION
+ 1044 000003F2 E92D 4FF0       PUSH             {R4-R11, LR} ; Salvataggio cont
+                                                            esto (9 registri ->
+                                                             36 bytes)
+ 1045 000003F6         
+ 1046 000003F6         ; --- RECUPERO PARAMETRI DALLO STACK ---
+ 1047 000003F6 9C09            LDR              R4, [SP, #36] ; R4 = Indirizzo 
+                                                            base VETT_RANDOM
+ 1048 000003F8 9D0A            LDR              R5, [SP, #40] ; R5 = Indirizzo 
+                                                            base VETT_FIB
+ 1049 000003FA         
+ 1050 000003FA         ; --- FASE 1: GENERAZIONE FIBONACCI ---
+ 1051 000003FA 46AB            MOV              R11, R5     ; R11 = Puntatore s
+                                                            corrimento VETT_FIB
+                                                            
+ 1052 000003FC F84B 0B04       STR              R0, [R11], #4 ; Scrivo num1 in 
+                                                            memoria (Fib[0])
+ 1053 00000400 F84B 1B04       STR              R1, [R11], #4 ; Scrivo num2 in 
+                                                            memoria (Fib[1])
+ 1054 00000404 F102 0900       ADD              R9, R2, #0  ; R9 = Copia di 'n'
+                                                             (lunghezza Fib) pe
+                                                            r i loop successivi
+                                                            
+ 1055 00000408         
+ 1056 00000408         loop_vettore_fib
+ 1057 00000408 EB00 0801       ADD              R8, R0, R1  ; Calcolo prossimo:
+                                                             Fib[i] = Fib[i-1] 
+                                                            + Fib[i-2]
+ 1058 0000040C F102 32FF       ADD              R2, R2, #-1 ; Decremento contat
+                                                            ore n
+ 1059 00000410 F84B 8B04       STR              R8, [R11], #4 ; Memorizzo il nu
+                                                            ovo numero in VETT_
+                                                            FIB
+ 1060 00000414         
+ 1061 00000414         ; Shift dei valori per il prossimo ciclo
+ 1062 00000414 F101 0000       ADD              R0, R1, #0  ; Fib[i-2] diventa 
+                                                            Fib[i-1]
+ 1063 00000418 F108 0100       ADD              R1, R8, #0  ; Fib[i-1] diventa 
+                                                            Fib[i] (nuovo calco
+                                                            lato)
+ 1064 0000041C         
+ 1065 0000041C 2A02            CMP              R2, #2      ; Controllo se ho g
+                                                            enerato n numeri
+ 1066 0000041E D1F3            BNE              loop_vettore_fib
+ 1067 00000420         
+ 1068 00000420         ; --- FASE 2: CONTEGGIO INTERSEZIONI (MATCH) ---
+ 1069 00000420 F04F 0000       MOV              R0, #0      ; R0 diventa il con
+                                                            tatore di match (Va
+                                                            lore di Ritorno)
+
+
+
+ARM Macro Assembler    Page 27 
+
+
+ 1070 00000424         
+ 1071 00000424         valore_vett_rand                     ; Loop Esterno: Sco
+                                                            rre VETT_RANDOM
+ 1072 00000424 F103 33FF       ADD              R3, R3, #-1 ; m-- (scorro rando
+                                                            m dall'ultimo al pr
+                                                            imo)
+ 1073 00000428 F1B3 3FFF       CMP              R3, #-1     ; Se m < 0, ho fini
+                                                            to di controllare t
+                                                            utti i numeri rando
+                                                            m
+ 1074 0000042C D00F            BEQ              exit_outer_loop
+ 1075 0000042E         
+ 1076 0000042E F854 A023       LDR              R10, [R4, R3, LSL #2] ; Carico 
+                                                            elemento corrente d
+                                                            a VETT_RANDOM in R1
+                                                            0
+ 1077 00000432 F04F 0200       MOV              R2, #0      ; Reset indice j=0 
+                                                            per scorrere VETT_F
+                                                            IB
+ 1078 00000436         
+ 1079 00000436         valore_vett_fib                      ; Loop Interno: Sco
+                                                            rre VETT_FIB genera
+                                                            to prima
+ 1080 00000436 F855 B022       LDR              R11, [R5, R2, LSL #2] ; Carico 
+                                                            elemento da VETT_FI
+                                                            B in R11
+ 1081 0000043A         
+ 1082 0000043A 45D3            CMP              R11, R10    ; Confronto Fib[j] 
+                                                            con Random[i]
+ 1083 0000043C D004            BEQ              valore_uguale ; Se uguali, salt
+                                                            o a incremento cont
+                                                            atore
+ 1084 0000043E         
+ 1085 0000043E F102 0201       ADD              R2, R2, #1  ; j++
+ 1086 00000442 454A            CMP              R2, R9      ; Controllo se ho f
+                                                            inito di scorrere F
+                                                            ibonacci (j < n)
+ 1087 00000444 D0EE            BEQ              valore_vett_rand ; Se finito se
+                                                            nza match, passo al
+                                                             prossimo numero ra
+                                                            ndom
+ 1088 00000446 D1F6            BNE              valore_vett_fib ; Altrimenti co
+                                                            ntinuo a cercare
+ 1089 00000448         
+ 1090 00000448         valore_uguale
+ 1091 00000448 F100 0001       ADD              R0, R0, #1  ; Match trovato: in
+                                                            cremento risultato 
+                                                            (R0++)
+ 1092 0000044C E7EA            B                valore_vett_rand ; Passo al pro
+                                                            ssimo numero random
+                                                            
+ 1093 0000044E         
+ 1094 0000044E         exit_outer_loop
+ 1095 0000044E E8BD 8FF0       POP              {R4-R11, PC} ; Ripristino regis
+                                                            tri e ritorno al ch
+                                                            iamante (R0 contien
+                                                            e il risultato)
+ 1096 00000452         
+ 1097 00000452                 ENDFUNC
+
+
+
+ARM Macro Assembler    Page 28 
+
+
+ 1098 00000452         
+ 1099 00000452         
+ 1100 00000452         ; ------------------------------------------------------
+                       ---------------------------
+ 1101 00000452         ; Funzione: updateRank
+ 1102 00000452         ;
+ 1103 00000452         ; 1. COSA FA:
+ 1104 00000452         ;    - Inserisce un nuovo punteggio (score) in un array 
+                       ordinato in modo decrescente.
+ 1105 00000452         ;    - Conta gli elementi attuali e shifta l'array per f
+                       are spazio al nuovo valore.
+ 1106 00000452         ;    - Controlla se il nuovo punteggio rientra nelle pri
+                       me 3 posizioni (Podio).
+ 1107 00000452         ;    - Calcola la differenza (Delta) tra il punteggio ma
+                       ssimo (1°) e minimo (ultimo).
+ 1108 00000452         ;
+ 1109 00000452         ; 2. PARAMETRI IN INGRESSO:
+ 1110 00000452         ;    R0 = score (uint8_t) -> Il punteggio da inserire
+ 1111 00000452         ;    R1 = indirizzo classifica (uint8_t*) -> Array ordin
+                       ato
+ 1112 00000452         ;    R2 = indirizzo maxDiff (uint8_t*) -> Dove salvare l
+                       a differenza Max-Min
+ 1113 00000452         ;    R3 = indirizzo podio (uint8_t*) -> Dove salvare il 
+                       flag (1=Podio, 0=No)
+ 1114 00000452         ;
+ 1115 00000452         ; 3. PARAMETRI IN USCITA:
+ 1116 00000452         ;    R0 = Posizione in classifica ottenuta (1-based: 1=P
+                       rimo, 2=Secondo, ecc.)
+ 1117 00000452         ; ------------------------------------------------------
+                       ---------------------------
+ 1118 00000452         
+ 1119 00000452                 EXPORT           updateRank
+ 1120 00000452         updateRank
+                               FUNCTION
+ 1121 00000452 E92D 4FF0       PUSH             {R4-R11, LR}
+ 1122 00000456         
+ 1123 00000456 4604            MOV              R4, R0      ; R4 = Score da ins
+                                                            erire
+ 1124 00000458 F04F 0500       MOV              R5, #0      ; R5 = Indice scorr
+                                                            imento (i)
+ 1125 0000045C F04F 0801       MOV              R8, #1      ; R8 = Contatore el
+                                                            ementi (N). Parte d
+                                                            a 1 se consideriamo
+                                                             lo 0 finale? 
+ 1126 00000460         ; (Nota: Dal codice sembra contare gli elementi validi p
+                       rima dello 0)
+ 1127 00000460         
+ 1128 00000460         ; Reset Flag Podio
+ 1129 00000460 F04F 0600       MOV              R6, #0
+ 1130 00000464 701E            STRB             R6, [R3]
+ 1131 00000466         
+ 1132 00000466         ; --- FASE 1: CONTA GLI ELEMENTI ATTUALI ---
+ 1133 00000466         conta_elementi
+ 1134 00000466 F108 3AFF       ADD              R10, R8, #-1 ; Indice k = N-1 (
+                                                            Offset)
+ 1135 0000046A F811 600A       LDRB             R6, [R1, R10] ; Leggi byte dall
+                                                            'array
+ 1136 0000046E 2E00            CMP              R6, #0      ; È il terminatore
+                                                             (0)?
+
+
+
+ARM Macro Assembler    Page 29 
+
+
+ 1137 00000470 D002            BEQ              fine_conteggio
+ 1138 00000472 F108 0801       ADD              R8, R8, #1  ; N++
+ 1139 00000476 E7F6            B                conta_elementi
+ 1140 00000478         
+ 1141 00000478         fine_conteggio
+ 1142 00000478 F108 38FF       ADD              R8, R8, #-1 ; R8 = Numero eleme
+                                                            nti validi (Size at
+                                                            tuale dell'array)
+ 1143 0000047C         
+ 1144 0000047C         ; --- FASE 2: CERCA LA POSIZIONE DI INSERIMENTO ---
+ 1145 0000047C         loop_esterno
+ 1146 0000047C 4545            CMP              R5, R8      ; Se siamo arrivati
+                                                             in fondo (i == Siz
+                                                            e)
+ 1147 0000047E D010            BEQ              back        ; Inseriamo in coda
+                                                            
+ 1148 00000480         
+ 1149 00000480 5D4E            LDRB             R6, [R1, R5] ; Leggi valore cor
+                                                            rente
+ 1150 00000482 42B4            CMP              R4, R6      ; Confronto Score v
+                                                            s Corrente
+ 1151 00000484 DC02            BGT              inserisci   ; Se Score > Corren
+                                                            te, ho trovato la m
+                                                            ia posizione
+ 1152 00000486         
+ 1153 00000486 F105 0501       ADD              R5, R5, #1  ; Altrimenti avanza
+                                                             (i++)
+ 1154 0000048A E7F7            B                loop_esterno
+ 1155 0000048C         
+ 1156 0000048C         ; --- FASE 3: SHIFT ARRAY (FAI SPAZIO) ---
+ 1157 0000048C         inserisci
+ 1158 0000048C         ; Devo spostare tutto da 'i' in poi verso destra.
+ 1159 0000048C         ; Parto dal fondo (nuova posizione R8) e copio R8-1 in R
+                       8.
+ 1160 0000048C 4647            MOV              R7, R8      ; J parte dalla fin
+                                                            e (Size attuale, ch
+                                                            e diventerà Size+1
+                                                            )
+ 1161 0000048E         
+ 1162 0000048E         loop_shift
+ 1163 0000048E 42AF            CMP              R7, R5      ; Se J == indice in
+                                                            serimento, ho finit
+                                                            o lo shift
+ 1164 00000490 D007            BEQ              back
+ 1165 00000492         
+ 1166 00000492 F1A7 0901       SUB              R9, R7, #1  ; Sorgente = J-1
+ 1167 00000496 F811 6009       LDRB             R6, [R1, R9] ; Leggi elemento p
+                                                            recedente
+ 1168 0000049A 55CE            STRB             R6, [R1, R7] ; Scrivi in posizi
+                                                            one attuale (Shift 
+                                                            Destra)
+ 1169 0000049C         
+ 1170 0000049C F1A7 0701       SUB              R7, R7, #1  ; J--
+ 1171 000004A0 E7F5            B                loop_shift
+ 1172 000004A2         
+ 1173 000004A2         ; --- FASE 4: SCRITTURA E CHECK PODIO ---
+ 1174 000004A2         back
+ 1175 000004A2 554C            STRB             R4, [R1, R5] ; Scrivo il nuovo 
+                                                            SCORE nel "buco" cr
+
+
+
+ARM Macro Assembler    Page 30 
+
+
+                                                            eato o in coda
+ 1176 000004A4         
+ 1177 000004A4 F105 0001       ADD              R0, R5, #1  ; Calcolo Posizione
+                                                             (1-based) per il r
+                                                            eturn
+ 1178 000004A8         
+ 1179 000004A8 2803            CMP              R0, #3      ; Controllo Podio (
+                                                            Posizione <= 3)
+ 1180 000004AA DC02            BGT              calcola_diff ; Se > 3, niente p
+                                                            odio
+ 1181 000004AC         
+ 1182 000004AC F04F 0601       MOV              R6, #1
+ 1183 000004B0 701E            STRB             R6, [R3]    ; Setto flag Podio 
+                                                            = 1
+ 1184 000004B2         
+ 1185 000004B2         calcola_diff
+ 1186 000004B2         ; --- FASE 5: CALCOLA DIFFERENZA MAX - MIN ---
+ 1187 000004B2         ; Il MAX è sempre in testa (indice 0) perché l'array �
+                       � decrescente.
+ 1188 000004B2         ; Il MIN è in coda. Dato che ho aggiunto un elemento, l
+                       a coda è all'indice R8.
+ 1189 000004B2         
+ 1190 000004B2 F891 B000       LDRB             R11, [R1]   ; Carico il Primo (
+                                                            Max)
+ 1191 000004B6 F811 A008       LDRB             R10, [R1, R8] ; Carico l'Ultimo
+                                                             (Min) - Nota: R8 �
+                                                            � la nuova dimensio
+                                                            ne -1
+ 1192 000004BA EBAB 060A       SUB              R6, R11, R10 ; Diff = Max - Min
+                                                            
+ 1193 000004BE 7016            STRB             R6, [R2]    ; Salvo il risultat
+                                                            o nel puntatore max
+                                                            Diff
+ 1194 000004C0         
+ 1195 000004C0 E8BD 8FF0       POP              {R4-R11, PC}
+ 1196 000004C4                 ENDFUNC
+ 1197 000004C4         
+ 1198 000004C4         
+ 1199 000004C4         
+ 1200 000004C4         ; ------------------------------------------------------
+                       ---------------------------
+ 1201 000004C4         ; Funzione: compute_statistics
+ 1202 000004C4         ;
+ 1203 000004C4         ; 1. COSA FA:
+ 1204 000004C4         ;    - Simula l'andamento temporale di una partita tra H
+                       OME e GUEST.
+ 1205 000004C4         ;    - Gli array contengono i timestamp in cui è stato 
+                       segnato il punto corrispondente all'indice.
+ 1206 000004C4         ;    - Scorre gli array cronologicamente, saltando i val
+                       ori 0 (punti non assegnati).
+ 1207 000004C4         ;    - Ad ogni cambio di punteggio, calcola il vantaggio
+                        (Valore Assoluto |HOME - GUEST|).
+ 1208 000004C4         ;    - Memorizza il massimo vantaggio raggiunto durante 
+                       il match.
+ 1209 000004C4         ;    - Determina il vincitore finale.
+ 1210 000004C4         ;
+ 1211 000004C4         ; 2. PARAMETRI IN INGRESSO:
+ 1212 000004C4         ;    R0 = Array HOME (uint32_t*)  -> Timestamp dei punti
+                        casa
+
+
+
+ARM Macro Assembler    Page 31 
+
+
+ 1213 000004C4         ;    R1 = Array GUEST (uint32_t*) -> Timestamp dei punti
+                        ospiti
+ 1214 000004C4         ;    R2 = Ptr maxAdvantage (uint8_t*) -> Indirizzo dove 
+                       salvare il max distacco
+ 1215 000004C4         ;
+ 1216 000004C4         ; 3. PARAMETRI IN USCITA:
+ 1217 000004C4         ;    R0 = Vincitore (1 = HOME, 2 = GUEST, 0 = Pareggio)
+ 1218 000004C4         ; ------------------------------------------------------
+                       ---------------------------
+ 1219 000004C4         
+ 1220 000004C4                 EXPORT           compute_statistics2
+ 1221 000004C4         compute_statistics2
+                               PROC
+ 1222 000004C4 E92D 4FF0       PUSH             {R4-R11, LR}
+ 1223 000004C8         
+ 1224 000004C8 F04F 0400       MOV              R4, #0      ; R4 = Punteggio At
+                                                            tuale HOME
+ 1225 000004CC F04F 0500       MOV              R5, #0      ; R5 = Punteggio At
+                                                            tuale GUEST
+ 1226 000004D0 F04F 0600       MOV              R6, #0      ; R6 = MaxAdvantage
+                                                             (Record)
+ 1227 000004D4 F04F 3BFF       MOV              R11, #0xFFFFFFFF ; R11 = Valore
+                                                             sentinella (Infini
+                                                            to)
+ 1228 000004D8         
+ 1229 000004D8         main_loop
+ 1230 000004D8         ; --- 1. CERCA PROSSIMO EVENTO HOME ---
+ 1231 000004D8 46A1            MOV              R9, R4      ; Start search from
+                                                             current score
+ 1232 000004DA         find_next_h
+ 1233 000004DA F109 0901       ADD              R9, R9, #1  ; Next index
+ 1234 000004DE F1B9 0F11       CMP              R9, #17     ; Check bounds (Max
+                                                             score HOME)
+ 1235 000004E2 DA04            BGE              no_more_h
+ 1236 000004E4 F850 7029       LDR              R7, [R0, R9, LSL #2] 
+                                                            ; Load timestamp
+ 1237 000004E8 2F00            CMP              R7, #0      ; Skip invalid time
+                                                            s (0)
+ 1238 000004EA D0F6            BEQ              find_next_h
+ 1239 000004EC E000            B                found_h
+ 1240 000004EE         no_more_h
+ 1241 000004EE 465F            MOV              R7, R11     ; Set time to Infin
+                                                            ity
+ 1242 000004F0         found_h
+ 1243 000004F0         ; R7 = Next Home Time, R9 = Potential New Score Home
+ 1244 000004F0         
+ 1245 000004F0         ; --- 2. CERCA PROSSIMO EVENTO GUEST ---
+ 1246 000004F0 46AA            MOV              R10, R5     ; Start search from
+                                                             current score
+ 1247 000004F2         find_next_g
+ 1248 000004F2 F10A 0A01       ADD              R10, R10, #1 ; Next index
+ 1249 000004F6 F1BA 0F10       CMP              R10, #16    ; Check bounds (Max
+                                                             score GUEST)
+ 1250 000004FA DA05            BGE              no_more_g
+ 1251 000004FC F851 802A       LDR              R8, [R1, R10, LSL #2] 
+                                                            ; Load timestamp
+ 1252 00000500 F1B8 0F00       CMP              R8, #0      ; Skip invalid time
+                                                            s (0)
+ 1253 00000504 D0F5            BEQ              find_next_g
+
+
+
+ARM Macro Assembler    Page 32 
+
+
+ 1254 00000506 E000            B                found_g
+ 1255 00000508         no_more_g
+ 1256 00000508 46D8            MOV              R8, R11     ; Set time to Infin
+                                                            ity
+ 1257 0000050A         found_g
+ 1258 0000050A         ; R8 = Next Guest Time, R10 = Potential New Score Guest
+ 1259 0000050A         
+ 1260 0000050A         ; --- 3. CONFRONTA TEMPI E AGGIORNA ---
+ 1261 0000050A 455F            CMP              R7, R11     ; Home finished?
+ 1262 0000050C BF08 45D8       CMPEQ            R8, R11     ; AND Guest finishe
+                                                            d?
+ 1263 00000510 D00C            BEQ              end_stats   ; Both done -> Exit
+                                                            
+ 1264 00000512         
+ 1265 00000512 4547            CMP              R7, R8      ; Compare timestamp
+                                                            s
+ 1266 00000514         
+ 1267 00000514         ; Aggiorno il punteggio SOLO di chi ha segnato prima (te
+                       mpo minore)
+ 1268 00000514 BF34 464C       MOVLO            R4, R9      ; If TimeH < TimeG 
+                                                            -> Update Home Scor
+                                                            e
+ 1269 00000518 4655            MOVHS            R5, R10     ; If TimeG <= TimeH
+                                                             -> Update Guest Sc
+                                                            ore
+ 1270 0000051A         
+ 1271 0000051A         ; --- 4. CALCOLA VANTAGGIO ---
+ 1272 0000051A EBB4 0C05       SUBS             R12, R4, R5 ; Diff = Home - Gue
+                                                            st
+ 1273 0000051E BF48 F1CC 
+              0C00             RSBMI            R12, R12, #0 ; ABS(Diff)
+ 1274 00000524         
+ 1275 00000524 45B4            CMP              R12, R6     ; Check against Max
+                                                            
+ 1276 00000526 BF88 4666       MOVHI            R6, R12     ; Update Max if rec
+                                                            ord broken
+ 1277 0000052A         
+ 1278 0000052A E7D5            B                main_loop   ; Next iteration
+ 1279 0000052C         
+ 1280 0000052C         end_stats
+ 1281 0000052C 7016            STRB             R6, [R2]    ; Store Max Advanta
+                                                            ge result
+ 1282 0000052E         
+ 1283 0000052E         ; Determina Vincitore
+ 1284 0000052E 42AC            CMP              R4, R5
+ 1285 00000530 BF8C 2001       MOVHI            R0, #1      ; Winner = HOME
+ 1286 00000534 2002            MOVLS            R0, #2      ; Winner = GUEST (a
+                                                            ssume no draw or Gu
+                                                            est wins draws)
+ 1287 00000536 BF08 2000       MOVEQ            R0, #0      ; (Optional: Draw)
+ 1288 0000053A         
+ 1289 0000053A E8BD 8FF0       POP              {R4-R11, PC}
+ 1290 0000053E                 ENDP
+ 1291 0000053E         
+ 1292 0000053E         
+ 1293 0000053E         
+ 1294 0000053E         ; ------------------------------------------------------
+                       ---------------------------
+ 1295 0000053E         ; Funzione: compute_sum_and_ranges
+
+
+
+ARM Macro Assembler    Page 33 
+
+
+ 1296 0000053E         ;
+ 1297 0000053E         ; 1. COSA FA:
+ 1298 0000053E         ;    - Scorre un vettore di numeri a 16 bit (half-word).
+                       
+ 1299 0000053E         ;    - Calcola la somma totale di tutti gli elementi del
+                        vettore.
+ 1300 0000053E         ;    - Conta quanti elementi cadono nell'intervallo [Low
+                       erBound, UpperBound] (inclusi).
+ 1301 0000053E         ;    - Restituisce la somma in R0 e scrive il conteggio 
+                       range in memoria.
+ 1302 0000053E         ;
+ 1303 0000053E         ; 2. PARAMETRI IN INGRESSO:
+ 1304 0000053E         ;    R0 = Indirizzo base del vettore (uint16_t*)
+ 1305 0000053E         ;    R1 = Lunghezza del vettore (N)
+ 1306 0000053E         ;    R2 = Lower Bound (Limite inferiore range)
+ 1307 0000053E         ;    R3 = Upper Bound (Limite superiore range)
+ 1308 0000053E         ;    STACK 5° Argomento ([SP+28]) = Indirizzo puntatore
+                        Rc (Dove scrivere il conteggio)
+ 1309 0000053E         ;
+ 1310 0000053E         ; 3. PARAMETRI IN USCITA:
+ 1311 0000053E         ;    R0 = Somma totale degli elementi
+ 1312 0000053E         ; ------------------------------------------------------
+                       ---------------------------
+ 1313 0000053E                 EXPORT           compute_sum_and_ranges
+ 1314 0000053E         compute_sum_and_ranges
+                               PROC
+ 1315 0000053E E92D 43F0       PUSH             {R4-R9, LR} ; Salva 7 registri 
+                                                            -> 7 * 4 = 28 byte 
+                                                            di offset
+ 1316 00000542         
+ 1317 00000542         ; --- Recupero 5° argomento (Rc ptr) ---
+ 1318 00000542 9C07            LDR              R4, [SP, #28] ; Legge l'indiriz
+                                                            zo di Rc dallo stac
+                                                            k
+ 1319 00000544         
+ 1320 00000544 4605            MOV              R5, R0      ; R5 = Base address
+                                                             vettore (copia sic
+                                                            ura)
+ 1321 00000546 F04F 0000       MOV              R0, #0      ; R0 = Accumulatore
+                                                             Somma
+ 1322 0000054A F04F 0700       MOV              R7, #0      ; R7 = Indice i
+ 1323 0000054E F04F 0900       MOV              R9, #0      ; R9 = Contatore va
+                                                            lori nel range (Res
+                                                            ult Count)
+ 1324 00000552         
+ 1325 00000552         loop
+ 1326 00000552 428F            CMP              R7, R1      ; Fine vettore?
+ 1327 00000554 D00D            BEQ              exit_somma
+ 1328 00000556         
+ 1329 00000556 EA4F 0647       LSL              R6, R7, #1  ; Offset = i * 2 (p
+                                                            oiché sono Half-Wo
+                                                            rd 16bit)
+ 1330 0000055A F835 8006       LDRH             R8, [R5, R6] ; R8 = Vett[i] (Lo
+                                                            ad Half-word)
+ 1331 0000055E         
+ 1332 0000055E 4440            ADD              R0, R0, R8  ; Somma += Valore
+ 1333 00000560 F107 0701       ADD              R7, R7, #1  ; i++
+ 1334 00000564         
+ 1335 00000564         ; --- Controllo Range [Lower, Upper] ---
+
+
+
+ARM Macro Assembler    Page 34 
+
+
+ 1336 00000564 4590            CMP              R8, R2
+ 1337 00000566 DBF4            BLT              loop        ; Se Valore < Lower
+                                                            , salta (fuori rang
+                                                            e)
+ 1338 00000568         
+ 1339 00000568 4598            CMP              R8, R3
+ 1340 0000056A DCF2            BGT              loop        ; Se Valore > Upper
+                                                            , salta (fuori rang
+                                                            e)
+ 1341 0000056C         
+ 1342 0000056C F109 0901       ADD              R9, R9, #1  ; Se arrivo qui, è
+                                                             dentro il range: C
+                                                            ount++
+ 1343 00000570 E7EF            B                loop
+ 1344 00000572         
+ 1345 00000572         exit_somma
+ 1346 00000572 F8C4 9000       STR              R9, [R4]    ; Scrivo il contegg
+                                                            io nell'indirizzo R
+                                                            c
+ 1347 00000576 E8BD 83F0       POP              {R4-R9, PC}
+ 1348 0000057A                 ENDP
+ 1349 0000057A         
+ 1350 0000057A         
+ 1351 0000057A         
+ 1352 0000057A         ; ------------------------------------------------------
+                       ---------------------------
+ 1353 0000057A         ; Funzione: analisi_accuratezza
+ 1354 0000057A         ;
+ 1355 0000057A         ; 1. COSA FA:
+ 1356 0000057A         ;    - Confronta due vettori (VETT1 e VETT2) elemento pe
+                       r elemento.
+ 1357 0000057A         ;    - Calcola la differenza assoluta (|VETT1[i] - VETT2
+                       [i]|) per ogni elemento.
+ 1358 0000057A         ;    - Memorizza queste differenze nel vettore RES.
+ 1359 0000057A         ;    - Calcola la media totale delle differenze (Errore 
+                       Medio).
+ 1360 0000057A         ;
+ 1361 0000057A         ; 2. PARAMETRI IN INGRESSO:
+ 1362 0000057A         ;    R0 = Indirizzo VETT1 (uint8_t*)
+ 1363 0000057A         ;    R1 = Indirizzo VETT2 (uint8_t*)
+ 1364 0000057A         ;    R2 = N (Dimensione degli array)
+ 1365 0000057A         ;    R3 = Indirizzo RES  (uint8_t*) -> Dove salvare le d
+                       ifferenze
+ 1366 0000057A         ;
+ 1367 0000057A         ; 3. PARAMETRI IN USCITA:
+ 1368 0000057A         ;    R0 = Media delle differenze (Somma differenze / N)
+ 1369 0000057A         ;
+ 1370 0000057A         ; 4. FUNZIONI ESTERNE RICHIESTE:
+ 1371 0000057A         ;    - abs_value (Input: R0, R1 -> Output: R0 = |R0-R1|)
+                       
+ 1372 0000057A         ;    - DIVISION  (Input: R0, R1 -> Output: R0 = R0/R1)
+ 1373 0000057A         ; ------------------------------------------------------
+                       ---------------------------
+ 1374 0000057A                 EXPORT           analisi_accuratezza
+ 1375 0000057A         analisi_accuratezza
+                               FUNCTION
+ 1376 0000057A E92D 4FF0       PUSH             {R4-R11, LR}
+ 1377 0000057E         
+ 1378 0000057E 4605            MOV              R5, R0      ; R5 = Copia puntat
+
+
+
+ARM Macro Assembler    Page 35 
+
+
+                                                            ore VETT1 (safe reg
+                                                            ister)
+ 1379 00000580         ; R1 rimane puntatore VETT2 (gestito con push/pop)
+ 1380 00000580 F04F 0600       MOV              R6, #0      ; R6 = Indice i (0)
+                                                            
+ 1381 00000584 F04F 0A00       MOV              R10, #0     ; R10 = Accumulator
+                                                            e Somma (Numeratore
+                                                             media)
+ 1382 00000588         
+ 1383 00000588         outerloop2
+ 1384 00000588         ; --- Lettura elementi ---
+ 1385 00000588 5DAF            LDRB             R7, [R5, R6] ; R7 = VETT1[i]
+ 1386 0000058A F811 8006       LDRB             R8, [R1, R6] ; R8 = VETT2[i]
+ 1387 0000058E         
+ 1388 0000058E         ; --- Calcolo Differenza Assoluta ---
+ 1389 0000058E B403            PUSH             {R0, R1}    ; Salvo i puntatori
+                                                             agli array (R0, R1
+                                                            ) perché BL sporca
+                                                             i registri
+ 1390 00000590 4638            MOV              R0, R7      ; Parametro 1: Valo
+                                                            re 1
+ 1391 00000592 4641            MOV              R1, R8      ; Parametro 2: Valo
+                                                            re 2
+ 1392 00000594 F7FF FFFE       BL               abs_value   ; Chiama funzione e
+                                                            sterna
+ 1393 00000598 4681            MOV              R9, R0      ; R9 = Risultato (|
+                                                            a-b|)
+ 1394 0000059A BC03            POP              {R0, R1}    ; Ripristino i punt
+                                                            atori
+ 1395 0000059C         
+ 1396 0000059C         ; --- Salvataggio e Accumulo ---
+ 1397 0000059C F803 9006       STRB             R9, [R3, R6] ; Scrivo la differ
+                                                            enza in RES[i]
+ 1398 000005A0 44CA            ADD              R10, R10, R9 ; SommaTotale += D
+                                                            ifferenza
+ 1399 000005A2         
+ 1400 000005A2         ; --- Avanzamento Loop ---
+ 1401 000005A2 F106 0601       ADD              R6, R6, #1  ; i++
+ 1402 000005A6 4296            CMP              R6, R2      ; Controllo fine ar
+                                                            ray (i < N)
+ 1403 000005A8 D000            BEQ              exity2
+ 1404 000005AA E7ED            B                outerloop2
+ 1405 000005AC         
+ 1406 000005AC         exity2
+ 1407 000005AC         ; --- Calcolo Media Finale (Senza BL DIVISION) ---
+ 1408 000005AC         ; Non serve più il PUSH/POP di R0 e R1 perché non chia
+                       miamo funzioni esterne
+ 1409 000005AC         
+ 1410 000005AC 2A00            CMP              R2, #0      ; Controllo divisio
+                                                            ne per zero per sic
+                                                            urezza
+ 1411 000005AE D002            BEQ              div_zero_fix
+ 1412 000005B0         
+ 1413 000005B0 FBBA F0F2       UDIV             R0, R10, R2 ; R0 = SommaTotale 
+                                                            (R10) / N (R2)
+ 1414 000005B4 E001            B                fine_accuracy
+ 1415 000005B6         
+ 1416 000005B6         div_zero_fix
+ 1417 000005B6 F04F 0000       MOV              R0, #0      ; Se N=0, la media 
+
+
+
+ARM Macro Assembler    Page 36 
+
+
+                                                            è 0
+ 1418 000005BA         
+ 1419 000005BA         fine_accuracy
+ 1420 000005BA E8BD 8FF0       POP              {R4-R11, PC}
+ 1421 000005BE                 ENDFUNC
+ 1422 000005BE         
+ 1423 000005BE         
+ 1424 000005BE         
+ 1425 000005BE         ; ------------------------------------------------------
+                       ---------------------------
+ 1426 000005BE         ; Funzione: check_fibonacci
+ 1427 000005BE         ;
+ 1428 000005BE         ; 1. COSA FA:
+ 1429 000005BE         ;    - Genera i primi 'M' numeri della sequenza di Fibon
+                       acci.
+ 1430 000005BE         ;    - Controlla se il valore 'val' (R3) è troppo vicin
+                       o a uno qualsiasi di questi numeri.
+ 1431 000005BE         ;      (La distanza assoluta deve essere MAGGIORE di 'bo
+                       undary').
+ 1432 000005BE         ;    - Se il valore è valido (distante), lo inserisce n
+                       ella prima posizione libera (0) del vettore.
+ 1433 000005BE         ;    - Se il valore è troppo vicino o uguale a un numer
+                       o di Fibonacci, lo scarta.
+ 1434 000005BE         ;
+ 1435 000005BE         ; 2. PARAMETRI IN INGRESSO:
+ 1436 000005BE         ;    R0 = Indirizzo Vettore (uint8_t*) -> Dove inserire 
+                       il valore
+ 1437 000005BE         ;    R1 = N (Dimensione massima del vettore)
+ 1438 000005BE         ;    R2 = M (Quanti numeri di Fibonacci controllare)
+ 1439 000005BE         ;    R3 = Val (Il valore da verificare e inserire)
+ 1440 000005BE         ;    STACK 5° Argomento ([SP+36]) = Boundary (Distanza 
+                       minima richiesta)
+ 1441 000005BE         ;
+ 1442 000005BE         ; 3. PARAMETRI IN USCITA:
+ 1443 000005BE         ;    R0 = 1 se il valore è valido (ed è stato provato 
+                       l'inserimento).
+ 1444 000005BE         ;         0 se il valore è invalido (troppo vicino a un
+                        numero di Fibonacci).
+ 1445 000005BE         ;
+ 1446 000005BE         ; 4. FUNZIONI ESTERNE:
+ 1447 000005BE         ;    - abs_value (Calcola valore assoluto della differen
+                       za)
+ 1448 000005BE         ; ------------------------------------------------------
+                       ---------------------------
+ 1449 000005BE                 EXPORT           check_fibonacci
+ 1450 000005BE         check_fibonacci
+                               FUNCTION
+ 1451 000005BE E92D 4FF0       PUSH             {R4-R11, LR} ; Salvataggio cont
+                                                            esto (9 registri ->
+                                                             36 bytes)
+ 1452 000005C2         
+ 1453 000005C2         ; --- Recupero 5° parametro (Boundary) ---
+ 1454 000005C2 F89D 4024       LDRB             R4, [SP, #36] ; Legge Boundary 
+                                                            dallo stack (offset
+                                                             36)
+ 1455 000005C6         
+ 1456 000005C6 4605            MOV              R5, R0      ; R5 = Copia puntat
+                                                            ore Vett
+ 1457 000005C8 F04F 0600       MOV              R6, #0      ; R6 = Fib(i)   [In
+
+
+
+ARM Macro Assembler    Page 37 
+
+
+                                                            izio con 0]
+ 1458 000005CC F04F 0701       MOV              R7, #1      ; R7 = Fib(i+1) [In
+                                                            izio con 1]
+ 1459 000005D0 F04F 0B00       MOV              R11, #0     ; R11 = Indice per 
+                                                            scorrere il vettore
+                                                             finale
+ 1460 000005D4         
+ 1461 000005D4 F04F 0001       MOV              R0, #1      ; R0 = 1 (Default: 
+                                                            Successo/Inseribile
+                                                            )
+ 1462 000005D8         ; Se fallisce i controlli, verrà messo a 0.
+ 1463 000005D8         
+ 1464 000005D8         outerloop3
+ 1465 000005D8         ; Calcolo prossimo Fibonacci (ma non lo uso subito, uso 
+                       R6 corrente)
+ 1466 000005D8 EB07 0806       ADD              R8, R7, R6  ; Temp = Fib(i) + F
+                                                            ib(i+1)
+ 1467 000005DC F102 32FF       ADD              R2, R2, #-1 ; Decremento contat
+                                                            ore M (numeri da co
+                                                            ntrollare)
+ 1468 000005E0         
+ 1469 000005E0         ; Check 1: Uguaglianza esatta
+ 1470 000005E0 42B3            CMP              R3, R6      ; Val == FibCorrent
+                                                            e?
+ 1471 000005E2 D00D            BEQ              nonInserire ; Se uguale, rifiut
+                                                            a subito.
+ 1472 000005E4         
+ 1473 000005E4         ; Check 2: Distanza minima (Boundary)
+ 1474 000005E4 B40F            PUSH             {R0-R3}     ; Salvo registri vo
+                                                            latili prima della 
+                                                            BL
+ 1475 000005E6 4618            MOV              R0, R3      ; Arg1 = Valore
+ 1476 000005E8 4631            MOV              R1, R6      ; Arg2 = FibCorrent
+                                                            e
+ 1477 000005EA F7FF FFFE       BL               abs_value   ; Calcola |Val - Fi
+                                                            b|
+ 1478 000005EE 4681            MOV              R9, R0      ; R9 = Distanza
+ 1479 000005F0 BC0F            POP              {R0-R3}     ; Ripristino regist
+                                                            ri
+ 1480 000005F2         
+ 1481 000005F2 45A1            CMP              R9, R4      ; Distanza vs Bound
+                                                            ary
+ 1482 000005F4 DD04            BLE              nonInserire ; Se Distanza <= Bo
+                                                            undary -> Rifiuta
+ 1483 000005F6         
+ 1484 000005F6         ; Preparazione prossimo ciclo
+ 1485 000005F6 463E            MOV              R6, R7      ; Fib(i) = Fib(i+1)
+                                                            
+ 1486 000005F8 4647            MOV              R7, R8      ; Fib(i+1) = Temp
+ 1487 000005FA         
+ 1488 000005FA 2A00            CMP              R2, #0      ; Ho controllato tu
+                                                            tti gli M numeri?
+ 1489 000005FC D1EC            BNE              outerloop3  ; Se no, continua
+ 1490 000005FE         
+ 1491 000005FE         ; Se arrivo qui, il numero è VALIDO. Cerco dove inserir
+                       lo.
+ 1492 000005FE E002            B                TrovaPosVuota
+ 1493 00000600         
+ 1494 00000600         nonInserire
+
+
+
+ARM Macro Assembler    Page 38 
+
+
+ 1495 00000600 F04F 0000       MOV              R0, #0      ; Return 0 (Fallime
+                                                            nto)
+ 1496 00000604 E00C            B                exity3
+ 1497 00000606         
+ 1498 00000606         TrovaPosVuota
+ 1499 00000606 F815 A00B       LDRB             R10, [R5, R11] ; Leggo Vett[i]
+ 1500 0000060A F1BA 0F00       CMP              R10, #0     ; È una cella vuot
+                                                            a (0)?
+ 1501 0000060E BF08 F805 
+              300B             STRBEQ           R3, [R5, R11] ; Se sì, scrivo 
+                                                            il valore (R3)
+ 1502 00000614 D004            BEQ              exity3      ; E termino (R0 è 
+                                                            ancora 1)
+ 1503 00000616         
+ 1504 00000616 F10B 0B01       ADD              R11, R11, #1 ; i++
+ 1505 0000061A 458B            CMP              R11, R1     ; Ho superato la di
+                                                            mensione N?
+ 1506 0000061C D000            BEQ              exity3      ; Se vettore pieno,
+                                                             esco (senza inseri
+                                                            re, ma R0=1)
+ 1507 0000061E E7F2            B                TrovaPosVuota
+ 1508 00000620         
+ 1509 00000620         exity3
+ 1510 00000620 E8BD 8FF0       POP              {R4-R11, PC}
+ 1511 00000624                 ENDFUNC
+ 1512 00000624         
+ 1513 00000624         
+ 1514 00000624         
+ 1515 00000624         
+ 1516 00000624         
+ 1517 00000624         
+ 1518 00000624         
+ 1519 00000624         
+ 1520 00000624         
+ 1521 00000624         
+ 1522 00000624         
+ 1523 00000624                 END
+Command Line: --debug --xref --diag_suppress=9931,A1950W --cpu=Cortex-M3 --depe
+nd=.\objects\asm_functs.d -o.\objects\asm_functs.o -I.\Source\button_EXINT -I.\
+Source\CMSIS_core -I.\Source\joystick -I.\Source\led -I.\Source\RIT -I.\Source\
+timer -I.\Source -I.\RTE\_SW_Debug -IC:\Users\marti\AppData\Local\Arm\Packs\ARM
+\CMSIS\6.2.0\CMSIS\Core\Include -IC:\Users\marti\AppData\Local\Arm\Packs\Keil\L
+PC1700_DFP\2.7.2\Device\Include --predefine="__EVAL SETA 1" --predefine="__UVIS
+ION_VERSION SETA 543" --predefine="LPC175x_6x SETA 1" --predefine="_RTE_ SETA 1
+" --list=.\listings\asm_functs.lst Source\ASM\ASM_functs.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+TrovaPosVuota 00000606
+
+Symbol: TrovaPosVuota
+   Definitions
+      At line 1498 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1492 in file Source\ASM\ASM_functs.s
+      At line 1507 in file Source\ASM\ASM_functs.s
+
+abs_value 000001F2
+
+Symbol: abs_value
+   Definitions
+      At line 552 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 551 in file Source\ASM\ASM_functs.s
+      At line 1392 in file Source\ASM\ASM_functs.s
+      At line 1477 in file Source\ASM\ASM_functs.s
+
+analisi_accuratezza 0000057A
+
+Symbol: analisi_accuratezza
+   Definitions
+      At line 1375 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1374 in file Source\ASM\ASM_functs.s
+Comment: analisi_accuratezza used once
+array_avg 00000244
+
+Symbol: array_avg
+   Definitions
+      At line 655 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 654 in file Source\ASM\ASM_functs.s
+Comment: array_avg used once
+array_max_difference 00000276
+
+Symbol: array_max_difference
+   Definitions
+      At line 722 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 721 in file Source\ASM\ASM_functs.s
+Comment: array_max_difference used once
+array_search 00000256
+
+Symbol: array_search
+   Definitions
+      At line 681 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 680 in file Source\ASM\ASM_functs.s
+Comment: array_search used once
+array_sum 00000222
+
+Symbol: array_sum
+   Definitions
+      At line 621 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 620 in file Source\ASM\ASM_functs.s
+      At line 664 in file Source\ASM\ASM_functs.s
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Relocatable symbols
+
+
+ascii_to_int 00000298
+
+Symbol: ascii_to_int
+   Definitions
+      At line 761 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 760 in file Source\ASM\ASM_functs.s
+Comment: ascii_to_int used once
+asm_funct 00000000
+
+Symbol: asm_funct
+   Definitions
+      At line 40 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 39 in file Source\ASM\ASM_functs.s
+Comment: asm_funct used once
+asm_functions 00000000
+
+Symbol: asm_functions
+   Definitions
+      At line 36 in file Source\ASM\ASM_functs.s
+   Uses
+      None
+Comment: asm_functions unused
+back 000004A2
+
+Symbol: back
+   Definitions
+      At line 1174 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1147 in file Source\ASM\ASM_functs.s
+      At line 1164 in file Source\ASM\ASM_functs.s
+
+bubblesort 0000000A
+
+Symbol: bubblesort
+   Definitions
+      At line 79 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 78 in file Source\ASM\ASM_functs.s
+Comment: bubblesort used once
+calc_mod 00000098
+
+Symbol: calc_mod
+   Definitions
+      At line 202 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 173 in file Source\ASM\ASM_functs.s
+      At line 201 in file Source\ASM\ASM_functs.s
+
+calcola_diff 000004B2
+
+Symbol: calcola_diff
+   Definitions
+      At line 1185 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1180 in file Source\ASM\ASM_functs.s
+Comment: calcola_diff used once
+
+
+
+ARM Macro Assembler    Page 3 Alphabetic symbol ordering
+Relocatable symbols
+
+call_svc 00000054
+
+Symbol: call_svc
+   Definitions
+      At line 128 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 127 in file Source\ASM\ASM_functs.s
+Comment: call_svc used once
+check_fibonacci 000005BE
+
+Symbol: check_fibonacci
+   Definitions
+      At line 1450 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1449 in file Source\ASM\ASM_functs.s
+Comment: check_fibonacci used once
+check_lowerCase 000000A8
+
+Symbol: check_lowerCase
+   Definitions
+      At line 222 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 221 in file Source\ASM\ASM_functs.s
+Comment: check_lowerCase used once
+check_upperCase 000000C2
+
+Symbol: check_upperCase
+   Definitions
+      At line 247 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 246 in file Source\ASM\ASM_functs.s
+Comment: check_upperCase used once
+compute_statistics 00000328
+
+Symbol: compute_statistics
+   Definitions
+      At line 893 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 892 in file Source\ASM\ASM_functs.s
+Comment: compute_statistics used once
+compute_statistics2 000004C4
+
+Symbol: compute_statistics2
+   Definitions
+      At line 1221 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1220 in file Source\ASM\ASM_functs.s
+Comment: compute_statistics2 used once
+compute_sum_and_ranges 0000053E
+
+Symbol: compute_sum_and_ranges
+   Definitions
+      At line 1314 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1313 in file Source\ASM\ASM_functs.s
+Comment: compute_sum_and_ranges used once
+conta_elementi 00000466
+
+Symbol: conta_elementi
+
+
+
+ARM Macro Assembler    Page 4 Alphabetic symbol ordering
+Relocatable symbols
+
+   Definitions
+      At line 1133 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1139 in file Source\ASM\ASM_functs.s
+Comment: conta_elementi used once
+count_bit0 00000130
+
+Symbol: count_bit0
+   Definitions
+      At line 372 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 371 in file Source\ASM\ASM_functs.s
+Comment: count_bit0 used once
+count_bit1 00000112
+
+Symbol: count_bit1
+   Definitions
+      At line 342 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 341 in file Source\ASM\ASM_functs.s
+Comment: count_bit1 used once
+count_leading_zero 00000104
+
+Symbol: count_leading_zero
+   Definitions
+      At line 322 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 321 in file Source\ASM\ASM_functs.s
+Comment: count_leading_zero used once
+div_zero_fix 000005B6
+
+Symbol: div_zero_fix
+   Definitions
+      At line 1416 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1411 in file Source\ASM\ASM_functs.s
+Comment: div_zero_fix used once
+do_2_complement 000000DC
+
+Symbol: do_2_complement
+   Definitions
+      At line 273 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 272 in file Source\ASM\ASM_functs.s
+Comment: do_2_complement used once
+do_2_complement_64 000000EC
+
+Symbol: do_2_complement_64
+   Definitions
+      At line 292 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 291 in file Source\ASM\ASM_functs.s
+Comment: do_2_complement_64 used once
+endFunction_is_monotonic_decreasing 000001EE
+
+Symbol: endFunction_is_monotonic_decreasing
+   Definitions
+      At line 538 in file Source\ASM\ASM_functs.s
+   Uses
+
+
+
+ARM Macro Assembler    Page 5 Alphabetic symbol ordering
+Relocatable symbols
+
+      At line 533 in file Source\ASM\ASM_functs.s
+Comment: endFunction_is_monotonic_decreasing used once
+endFunction_is_monotonic_increasing 000001BE
+
+Symbol: endFunction_is_monotonic_increasing
+   Definitions
+      At line 496 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 491 in file Source\ASM\ASM_functs.s
+Comment: endFunction_is_monotonic_increasing used once
+end_atoi 000002C4
+
+Symbol: end_atoi
+   Definitions
+      At line 795 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 778 in file Source\ASM\ASM_functs.s
+      At line 782 in file Source\ASM\ASM_functs.s
+      At line 784 in file Source\ASM\ASM_functs.s
+
+end_for_array_sum 0000023E
+
+Symbol: end_for_array_sum
+   Definitions
+      At line 639 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 631 in file Source\ASM\ASM_functs.s
+Comment: end_for_array_sum used once
+end_stats 0000052C
+
+Symbol: end_stats
+   Definitions
+      At line 1280 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1263 in file Source\ASM\ASM_functs.s
+Comment: end_stats used once
+endfor_array_search 00000270
+
+Symbol: endfor_array_search
+   Definitions
+      At line 704 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 691 in file Source\ASM\ASM_functs.s
+      At line 698 in file Source\ASM\ASM_functs.s
+
+exitFalse_de 000001EA
+
+Symbol: exitFalse_de
+   Definitions
+      At line 535 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 526 in file Source\ASM\ASM_functs.s
+Comment: exitFalse_de used once
+exitFalse_in 000001BA
+
+Symbol: exitFalse_in
+   Definitions
+      At line 493 in file Source\ASM\ASM_functs.s
+   Uses
+
+
+
+ARM Macro Assembler    Page 6 Alphabetic symbol ordering
+Relocatable symbols
+
+      At line 484 in file Source\ASM\ASM_functs.s
+Comment: exitFalse_in used once
+exitFuncV 0000021E
+
+Symbol: exitFuncV
+   Definitions
+      At line 604 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 599 in file Source\ASM\ASM_functs.s
+Comment: exitFuncV used once
+exitMax 0000016A
+
+Symbol: exitMax
+   Definitions
+      At line 419 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 410 in file Source\ASM\ASM_functs.s
+Comment: exitMax used once
+exitMin 0000018C
+
+Symbol: exitMin
+   Definitions
+      At line 452 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 443 in file Source\ASM\ASM_functs.s
+Comment: exitMin used once
+exitTrue_de 000001E4
+
+Symbol: exitTrue_de
+   Definitions
+      At line 531 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 517 in file Source\ASM\ASM_functs.s
+Comment: exitTrue_de used once
+exitTrue_in 000001B4
+
+Symbol: exitTrue_in
+   Definitions
+      At line 489 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 475 in file Source\ASM\ASM_functs.s
+Comment: exitTrue_in used once
+exit_bubblesort 00000050
+
+Symbol: exit_bubblesort
+   Definitions
+      At line 119 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 88 in file Source\ASM\ASM_functs.s
+      At line 92 in file Source\ASM\ASM_functs.s
+
+exit_outer_loop 0000044E
+
+Symbol: exit_outer_loop
+   Definitions
+      At line 1094 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1074 in file Source\ASM\ASM_functs.s
+Comment: exit_outer_loop used once
+
+
+
+ARM Macro Assembler    Page 7 Alphabetic symbol ordering
+Relocatable symbols
+
+exit_somma 00000572
+
+Symbol: exit_somma
+   Definitions
+      At line 1345 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1327 in file Source\ASM\ASM_functs.s
+Comment: exit_somma used once
+exity 00000392
+
+Symbol: exity
+   Definitions
+      At line 949 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 908 in file Source\ASM\ASM_functs.s
+Comment: exity used once
+exity2 000005AC
+
+Symbol: exity2
+   Definitions
+      At line 1406 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1403 in file Source\ASM\ASM_functs.s
+Comment: exity2 used once
+exity3 00000620
+
+Symbol: exity3
+   Definitions
+      At line 1509 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1496 in file Source\ASM\ASM_functs.s
+      At line 1502 in file Source\ASM\ASM_functs.s
+      At line 1506 in file Source\ASM\ASM_functs.s
+
+fibonacci 000003F2
+
+Symbol: fibonacci
+   Definitions
+      At line 1043 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1042 in file Source\ASM\ASM_functs.s
+Comment: fibonacci used once
+find_next_g 000004F2
+
+Symbol: find_next_g
+   Definitions
+      At line 1247 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1253 in file Source\ASM\ASM_functs.s
+Comment: find_next_g used once
+find_next_h 000004DA
+
+Symbol: find_next_h
+   Definitions
+      At line 1232 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1238 in file Source\ASM\ASM_functs.s
+Comment: find_next_h used once
+fine_accuracy 000005BA
+
+
+
+ARM Macro Assembler    Page 8 Alphabetic symbol ordering
+Relocatable symbols
+
+
+Symbol: fine_accuracy
+   Definitions
+      At line 1419 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1414 in file Source\ASM\ASM_functs.s
+Comment: fine_accuracy used once
+fine_conteggio 00000478
+
+Symbol: fine_conteggio
+   Definitions
+      At line 1141 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1137 in file Source\ASM\ASM_functs.s
+Comment: fine_conteggio used once
+for_array_search 00000260
+
+Symbol: for_array_search
+   Definitions
+      At line 690 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 702 in file Source\ASM\ASM_functs.s
+Comment: for_array_search used once
+for_array_sum 00000230
+
+Symbol: for_array_sum
+   Definitions
+      At line 629 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 638 in file Source\ASM\ASM_functs.s
+Comment: for_array_sum used once
+for_bubblesort 0000002E
+
+Symbol: for_bubblesort
+   Definitions
+      At line 99 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 116 in file Source\ASM\ASM_functs.s
+Comment: for_bubblesort used once
+found_g 0000050A
+
+Symbol: found_g
+   Definitions
+      At line 1257 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1254 in file Source\ASM\ASM_functs.s
+Comment: found_g used once
+found_h 000004F0
+
+Symbol: found_h
+   Definitions
+      At line 1242 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1239 in file Source\ASM\ASM_functs.s
+Comment: found_h used once
+found_max 000003C6
+
+Symbol: found_max
+   Definitions
+
+
+
+ARM Macro Assembler    Page 9 Alphabetic symbol ordering
+Relocatable symbols
+
+      At line 991 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 980 in file Source\ASM\ASM_functs.s
+Comment: found_max used once
+get_max 0000014E
+
+Symbol: get_max
+   Definitions
+      At line 403 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 402 in file Source\ASM\ASM_functs.s
+      At line 732 in file Source\ASM\ASM_functs.s
+
+get_min 00000170
+
+Symbol: get_min
+   Definitions
+      At line 436 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 435 in file Source\ASM\ASM_functs.s
+      At line 739 in file Source\ASM\ASM_functs.s
+
+inner_loop 000003B0
+
+Symbol: inner_loop
+   Definitions
+      At line 978 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 989 in file Source\ASM\ASM_functs.s
+Comment: inner_loop used once
+inserisci 0000048C
+
+Symbol: inserisci
+   Definitions
+      At line 1157 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1151 in file Source\ASM\ASM_functs.s
+Comment: inserisci used once
+int_to_ascii 000002C8
+
+Symbol: int_to_ascii
+   Definitions
+      At line 811 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 810 in file Source\ASM\ASM_functs.s
+Comment: int_to_ascii used once
+isPrime 00000064
+
+Symbol: isPrime
+   Definitions
+      At line 154 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 153 in file Source\ASM\ASM_functs.s
+Comment: isPrime used once
+is_monotonic_decreasing 000001C2
+
+Symbol: is_monotonic_decreasing
+   Definitions
+      At line 511 in file Source\ASM\ASM_functs.s
+
+
+
+ARM Macro Assembler    Page 10 Alphabetic symbol ordering
+Relocatable symbols
+
+   Uses
+      At line 510 in file Source\ASM\ASM_functs.s
+Comment: is_monotonic_decreasing used once
+is_monotonic_increasing 00000192
+
+Symbol: is_monotonic_increasing
+   Definitions
+      At line 469 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 468 in file Source\ASM\ASM_functs.s
+Comment: is_monotonic_increasing used once
+loop 00000552
+
+Symbol: loop
+   Definitions
+      At line 1325 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1337 in file Source\ASM\ASM_functs.s
+      At line 1340 in file Source\ASM\ASM_functs.s
+      At line 1343 in file Source\ASM\ASM_functs.s
+
+loopCheck_de 000001D2
+
+Symbol: loopCheck_de
+   Definitions
+      At line 522 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 529 in file Source\ASM\ASM_functs.s
+Comment: loopCheck_de used once
+loopCheck_in 000001A2
+
+Symbol: loopCheck_in
+   Definitions
+      At line 480 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 487 in file Source\ASM\ASM_functs.s
+Comment: loopCheck_in used once
+loopCountBit0 0000013E
+
+Symbol: loopCountBit0
+   Definitions
+      At line 380 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 385 in file Source\ASM\ASM_functs.s
+Comment: loopCountBit0 used once
+loopCountBit1 00000120
+
+Symbol: loopCountBit1
+   Definitions
+      At line 350 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 355 in file Source\ASM\ASM_functs.s
+Comment: loopCountBit1 used once
+loopMax 0000015C
+
+Symbol: loopMax
+   Definitions
+      At line 412 in file Source\ASM\ASM_functs.s
+   Uses
+
+
+
+ARM Macro Assembler    Page 11 Alphabetic symbol ordering
+Relocatable symbols
+
+      At line 417 in file Source\ASM\ASM_functs.s
+Comment: loopMax used once
+loopMin 0000017E
+
+Symbol: loopMin
+   Definitions
+      At line 445 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 450 in file Source\ASM\ASM_functs.s
+Comment: loopMin used once
+loop_atoi 000002A8
+
+Symbol: loop_atoi
+   Definitions
+      At line 773 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 793 in file Source\ASM\ASM_functs.s
+Comment: loop_atoi used once
+loop_esterno 0000047C
+
+Symbol: loop_esterno
+   Definitions
+      At line 1145 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1154 in file Source\ASM\ASM_functs.s
+Comment: loop_esterno used once
+loop_extract_itoa 000002E6
+
+Symbol: loop_extract_itoa
+   Definitions
+      At line 831 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 825 in file Source\ASM\ASM_functs.s
+      At line 847 in file Source\ASM\ASM_functs.s
+
+loop_shift 0000048E
+
+Symbol: loop_shift
+   Definitions
+      At line 1162 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1171 in file Source\ASM\ASM_functs.s
+Comment: loop_shift used once
+loop_store_itoa 00000306
+
+Symbol: loop_store_itoa
+   Definitions
+      At line 849 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 833 in file Source\ASM\ASM_functs.s
+      At line 857 in file Source\ASM\ASM_functs.s
+
+loop_vettore_fib 00000408
+
+Symbol: loop_vettore_fib
+   Definitions
+      At line 1056 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1066 in file Source\ASM\ASM_functs.s
+
+
+
+ARM Macro Assembler    Page 12 Alphabetic symbol ordering
+Relocatable symbols
+
+Comment: loop_vettore_fib used once
+main_loop 000004D8
+
+Symbol: main_loop
+   Definitions
+      At line 1229 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1278 in file Source\ASM\ASM_functs.s
+Comment: main_loop used once
+next_discesa 00000382
+
+Symbol: next_discesa
+   Definitions
+      At line 941 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 927 in file Source\ASM\ASM_functs.s
+Comment: next_discesa used once
+next_salita 0000036C
+
+Symbol: next_salita
+   Definitions
+      At line 930 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 928 in file Source\ASM\ASM_functs.s
+Comment: next_salita used once
+no_more_g 00000508
+
+Symbol: no_more_g
+   Definitions
+      At line 1255 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1250 in file Source\ASM\ASM_functs.s
+Comment: no_more_g used once
+no_more_h 000004EE
+
+Symbol: no_more_h
+   Definitions
+      At line 1240 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1235 in file Source\ASM\ASM_functs.s
+Comment: no_more_h used once
+no_overflow_2c 00000100
+
+Symbol: no_overflow_2c
+   Definitions
+      At line 309 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 304 in file Source\ASM\ASM_functs.s
+Comment: no_overflow_2c used once
+nome_funzione_richiesta 0000031E
+
+Symbol: nome_funzione_richiesta
+   Definitions
+      At line 871 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 870 in file Source\ASM\ASM_functs.s
+Comment: nome_funzione_richiesta used once
+nonInserire 00000600
+
+
+
+
+ARM Macro Assembler    Page 13 Alphabetic symbol ordering
+Relocatable symbols
+
+Symbol: nonInserire
+   Definitions
+      At line 1494 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1471 in file Source\ASM\ASM_functs.s
+      At line 1482 in file Source\ASM\ASM_functs.s
+
+nope 000000BA
+
+Symbol: nope
+   Definitions
+      At line 233 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 226 in file Source\ASM\ASM_functs.s
+      At line 228 in file Source\ASM\ASM_functs.s
+
+nope2 000000D4
+
+Symbol: nope2
+   Definitions
+      At line 259 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 251 in file Source\ASM\ASM_functs.s
+      At line 253 in file Source\ASM\ASM_functs.s
+
+not_primep 00000088
+
+Symbol: not_primep
+   Definitions
+      At line 184 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 158 in file Source\ASM\ASM_functs.s
+      At line 177 in file Source\ASM\ASM_functs.s
+
+outOfRange 0000021A
+
+Symbol: outOfRange
+   Definitions
+      At line 601 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 591 in file Source\ASM\ASM_functs.s
+      At line 595 in file Source\ASM\ASM_functs.s
+
+outerloop 00000344
+
+Symbol: outerloop
+   Definitions
+      At line 906 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 939 in file Source\ASM\ASM_functs.s
+      At line 947 in file Source\ASM\ASM_functs.s
+
+outerloop2 00000588
+
+Symbol: outerloop2
+   Definitions
+      At line 1383 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1404 in file Source\ASM\ASM_functs.s
+
+
+
+ARM Macro Assembler    Page 14 Alphabetic symbol ordering
+Relocatable symbols
+
+Comment: outerloop2 used once
+outerloop3 000005D8
+
+Symbol: outerloop3
+   Definitions
+      At line 1464 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1489 in file Source\ASM\ASM_functs.s
+Comment: outerloop3 used once
+primep 00000090
+
+Symbol: primep
+   Definitions
+      At line 187 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 160 in file Source\ASM\ASM_functs.s
+      At line 170 in file Source\ASM\ASM_functs.s
+
+search_restart 000003A8
+
+Symbol: search_restart
+   Definitions
+      At line 972 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1007 in file Source\ASM\ASM_functs.s
+      At line 1011 in file Source\ASM\ASM_functs.s
+
+store_1st 000003E4
+
+Symbol: store_1st
+   Definitions
+      At line 1005 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 999 in file Source\ASM\ASM_functs.s
+Comment: store_1st used once
+store_2nd 000003E8
+
+Symbol: store_2nd
+   Definitions
+      At line 1009 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1001 in file Source\ASM\ASM_functs.s
+Comment: store_2nd used once
+store_3rd 000003EC
+
+Symbol: store_3rd
+   Definitions
+      At line 1013 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1003 in file Source\ASM\ASM_functs.s
+Comment: store_3rd used once
+terminate_string_itoa 00000314
+
+Symbol: terminate_string_itoa
+   Definitions
+      At line 859 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 828 in file Source\ASM\ASM_functs.s
+      At line 852 in file Source\ASM\ASM_functs.s
+
+
+
+ARM Macro Assembler    Page 15 Alphabetic symbol ordering
+Relocatable symbols
+
+
+updateRank 00000452
+
+Symbol: updateRank
+   Definitions
+      At line 1120 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1119 in file Source\ASM\ASM_functs.s
+Comment: updateRank used once
+valore_uguale 00000448
+
+Symbol: valore_uguale
+   Definitions
+      At line 1090 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1083 in file Source\ASM\ASM_functs.s
+Comment: valore_uguale used once
+valore_vett_fib 00000436
+
+Symbol: valore_vett_fib
+   Definitions
+      At line 1079 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1088 in file Source\ASM\ASM_functs.s
+Comment: valore_vett_fib used once
+valore_vett_rand 00000424
+
+Symbol: valore_vett_rand
+   Definitions
+      At line 1071 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 1087 in file Source\ASM\ASM_functs.s
+      At line 1092 in file Source\ASM\ASM_functs.s
+
+value_is_in_a_range 00000206
+
+Symbol: value_is_in_a_range
+   Definitions
+      At line 583 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 582 in file Source\ASM\ASM_functs.s
+Comment: value_is_in_a_range used once
+vincitore 00000398
+
+Symbol: vincitore
+   Definitions
+      At line 964 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 963 in file Source\ASM\ASM_functs.s
+Comment: vincitore used once
+while_bubblesort 0000001A
+
+Symbol: while_bubblesort
+   Definitions
+      At line 90 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 117 in file Source\ASM\ASM_functs.s
+Comment: while_bubblesort used once
+whilep 00000076
+
+
+
+ARM Macro Assembler    Page 16 Alphabetic symbol ordering
+Relocatable symbols
+
+
+Symbol: whilep
+   Definitions
+      At line 168 in file Source\ASM\ASM_functs.s
+   Uses
+      At line 182 in file Source\ASM\ASM_functs.s
+Comment: whilep used once
+108 symbols
+442 symbols in table
