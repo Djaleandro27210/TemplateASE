@@ -7,7 +7,7 @@ I (Source\CMSIS_core\core_cm3.h)(0x6979212F)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\system_LPC17xx.h)(0x6925791C)
 I (Source\led\led.h)(0x6979212F)
 I (Source\button_EXINT\button.h)(0x6979212F)
-I (Source\timer\timer.h)(0x6979212F)
+I (Source\timer\timer.h)(0x697A346E)
 I (Source\RIT\RIT.h)(0x6979212F)
 I (Source\joystick\joystick.h)(0x6979212F)
 I (Source\sample.h)(0x6979212F)
@@ -20,7 +20,7 @@ I (Source\utils.h)(0x6979212F)
 I (Source\sample.h)(0x6979212F)
 I (Source\led\led.h)(0x6979212F)
 I (Source\RIT\RIT.h)(0x6979212F)
-I (Source\timer\timer.h)(0x6979212F)
+I (Source\timer\timer.h)(0x697A346E)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\LPC17xx.h)(0x6925791C)
 I (Source\CMSIS_core\core_cm3.h)(0x6979212F)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\system_LPC17xx.h)(0x6925791C)
@@ -48,7 +48,7 @@ I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\
 I (Source\CMSIS_core\core_cm3.h)(0x6979212F)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\system_LPC17xx.h)(0x6925791C)
 I (Source\button_EXINT\..\led\led.h)(0x6979212F)
-I (Source\button_EXINT\..\timer\timer.h)(0x6979212F)
+I (Source\button_EXINT\..\timer\timer.h)(0x697A346E)
 F (.\Source\button_EXINT\lib_button.c)(0x6979212F)(-xc -std=c90 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__EVAL -gdwarf-4 -O1 -fno-function-sections -I ./Source/button_EXINT -I ./Source/CMSIS_core -I ./Source/joystick -I ./Source/led -I ./Source/RIT -I ./Source/timer -I ./Source/GLCD -I ./Source-I./RTE/_SW_Debug-IC:/Users/marti/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/marti/AppData/Local/Arm/Packs/Keil/LPC1700_DFP/2.7.2/Device/Include-D__UVISION_VERSION="543" -DLPC175x_6x -D_RTE_ -DSIMULATOR-o ./objects/lib_button.o -MMD)
 I (Source\button_EXINT\button.h)(0x6979212F)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\LPC17xx.h)(0x6925791C)
@@ -62,7 +62,7 @@ I (Source\RIT\RIT.h)(0x6979212F)
 I (Source\RIT\..\led\led.h)(0x6979212F)
 I (Source\RIT\..\sample.h)(0x6979212F)
 I (Source\RIT\..\RIT\RIT.h)(0x6979212F)
-I (Source\RIT\..\timer\timer.h)(0x6979212F)
+I (Source\RIT\..\timer\timer.h)(0x697A346E)
 F (.\Source\RIT\lib_RIT.c)(0x6979212F)(-xc -std=c90 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__EVAL -gdwarf-4 -O1 -fno-function-sections -I ./Source/button_EXINT -I ./Source/CMSIS_core -I ./Source/joystick -I ./Source/led -I ./Source/RIT -I ./Source/timer -I ./Source/GLCD -I ./Source-I./RTE/_SW_Debug-IC:/Users/marti/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/marti/AppData/Local/Arm/Packs/Keil/LPC1700_DFP/2.7.2/Device/Include-D__UVISION_VERSION="543" -DLPC175x_6x -D_RTE_ -DSIMULATOR-o ./objects/lib_rit.o -MMD)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\LPC17xx.h)(0x6925791C)
 I (Source\CMSIS_core\core_cm3.h)(0x6979212F)
@@ -85,16 +85,16 @@ F (.\Source\timer\IRQ_timer.c)(0x69793161)(-xc -std=c90 --target=arm-arm-none-ea
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\LPC17xx.h)(0x6925791C)
 I (Source\CMSIS_core\core_cm3.h)(0x6979212F)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\system_LPC17xx.h)(0x6925791C)
-I (Source\timer\timer.h)(0x6979212F)
+I (Source\timer\timer.h)(0x697A346E)
 I (Source\timer\..\led\led.h)(0x6979212F)
 I (Source\timer\..\utils.h)(0x6979212F)
 I (Source\timer\..\sample.h)(0x6979212F)
 I (Source\timer\..\RIT\RIT.h)(0x6979212F)
-I (Source\timer\..\timer\timer.h)(0x6979212F)
+I (Source\timer\..\timer\timer.h)(0x697A346E)
 I (Source\timer\..\functions.h)(0x6979212F)
-F (.\Source\timer\lib_timer.c)(0x69792763)(-xc -std=c90 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__EVAL -gdwarf-4 -O1 -fno-function-sections -I ./Source/button_EXINT -I ./Source/CMSIS_core -I ./Source/joystick -I ./Source/led -I ./Source/RIT -I ./Source/timer -I ./Source/GLCD -I ./Source-I./RTE/_SW_Debug-IC:/Users/marti/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/marti/AppData/Local/Arm/Packs/Keil/LPC1700_DFP/2.7.2/Device/Include-D__UVISION_VERSION="543" -DLPC175x_6x -D_RTE_ -DSIMULATOR-o ./objects/lib_timer.o -MMD)
-I (Source\timer\timer.h)(0x6979212F)
+F (.\Source\timer\lib_timer.c)(0x697A3451)(-xc -std=c90 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__EVAL -gdwarf-4 -O1 -fno-function-sections -I ./Source/button_EXINT -I ./Source/CMSIS_core -I ./Source/joystick -I ./Source/led -I ./Source/RIT -I ./Source/timer -I ./Source/GLCD -I ./Source-I./RTE/_SW_Debug-IC:/Users/marti/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/marti/AppData/Local/Arm/Packs/Keil/LPC1700_DFP/2.7.2/Device/Include-D__UVISION_VERSION="543" -DLPC175x_6x -D_RTE_ -DSIMULATOR-o ./objects/lib_timer.o -MMD)
+I (Source\timer\timer.h)(0x697A346E)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\LPC17xx.h)(0x6925791C)
 I (Source\CMSIS_core\core_cm3.h)(0x6979212F)
 I (C:\Users\marti\AppData\Local\Arm\Packs\Keil\LPC1700_DFP\2.7.2\Device\Include\system_LPC17xx.h)(0x6925791C)
-F (.\Source\timer\timer.h)(0x6979212F)()
+F (.\Source\timer\timer.h)(0x697A346E)()

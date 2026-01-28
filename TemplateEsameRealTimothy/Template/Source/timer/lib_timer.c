@@ -389,7 +389,7 @@ void power_on_timer3(){
 // Va dichiarata 'extern' nel file IRQ_timer.c per poterla decrementare
 volatile int blink_cnt = -1; 
 
-void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_timer, int sec) {
+void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_timer, float sec) {
     
     // 1. Calcolo il periodo totale del timer (Tempo tra due accensioni)
     // Formula: Frequenza Timer / Frequenza Lampeggio
@@ -400,10 +400,13 @@ void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_time
     int on = total / 2;
 
     // 3. Gestione della durata limitata
-    if (sec > 0) {
+    if (sec > 0.0f) {
         // Calcolo quanti cicli totali servono.
         // Esempio: 4Hz * 5 secondi = 20 lampeggi totali.
-        blink_cnt = sec * hz_led;
+        blink_cnt = (int) sec * hz_led;
+			if (blink_cnt == 0 && sec > 0.0f) {
+             blink_cnt = 1; 
+        }
     } else {
         // Se sec <= 0, imposto -1 che convenzionalmente significa "Infinito"
         blink_cnt = -1; 

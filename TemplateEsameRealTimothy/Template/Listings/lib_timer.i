@@ -1815,9 +1815,9 @@ void power_on_timer2();
 void power_on_timer3();
 float get_timer_value_in_sec(uint8_t timer_num);
 //blink
-void setup_TIMER_BLINK(int timer_num, int mr_off, int mr_reset, int desired_freq, int timer_freq);
-void blink_management(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint8_t led_num);
+void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_timer, float sec);
 
+void blink_handler(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint8_t led_num, uint8_t timer_id);
 
 extern void TIMER0_IRQHandler (void);
 extern void TIMER1_IRQHandler (void);
@@ -2132,7 +2132,7 @@ void power_on_timer3(){
 // Va dichiarata 'extern' nel file IRQ_timer.c per poterla decrementare
 volatile int blink_cnt = -1;
 
-void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_timer, int sec) {
+void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_timer, float sec) {
 
     // 1. Calcolo il periodo totale del timer (Tempo tra due accensioni)
     // Formula: Frequenza Timer / Frequenza Lampeggio
@@ -2143,10 +2143,13 @@ void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_time
     int on = total / 2;
 
     // 3. Gestione della durata limitata
-    if (sec > 0) {
+    if (sec > 0.0f) {
         // Calcolo quanti cicli totali servono.
         // Esempio: 4Hz * 5 secondi = 20 lampeggi totali.
-        blink_cnt = sec * hz_led;
+        blink_cnt = (int) sec * hz_led;
+   if (blink_cnt == 0 && sec > 0.0f) {
+             blink_cnt = 1;
+        }
     } else {
         // Se sec <= 0, imposto -1 che convenzionalmente significa "Infinito"
         blink_cnt = -1;
@@ -2163,7 +2166,7 @@ void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_time
     // 6. Avvio il timer
     enable_timer(timer_num);
 }
-# 441 "Source/timer/lib_timer.c"
+# 444 "Source/timer/lib_timer.c"
 void blink_handler(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint8_t led_num, uint8_t timer_id) {
 
     // -----------------------------------------------------------------
