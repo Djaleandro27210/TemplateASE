@@ -224,11 +224,11 @@ Removing Unused input sections from the image.
     Removing lib_joystick.o(.ARM.exidx), (8 bytes).
     Removing asm_functs.o(asm_functions), (1572 bytes).
     Removing irq_timer.o(.ARM.exidx), (32 bytes).
-    Removing lib_timer.o(.text), (1080 bytes).
+    Removing lib_timer.o(.text), (1066 bytes).
     Removing lib_timer.o(.ARM.exidx), (96 bytes).
     Removing lib_timer.o(.data.blink_cnt), (4 bytes).
 
-21 unused section(s) (total 3588 bytes) removed from the image.
+21 unused section(s) (total 3574 bytes) removed from the image.
 
 ==============================================================================
 

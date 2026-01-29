@@ -26,7 +26,11 @@
 	;LDRH R4, [R0, R1, LSL #1] ; OFFSET = i * 2 (Dati a 16 bit / HALF-WORD) (short, uint16_t)
 	;LDR  R4, [R0, R1, LSL #2] ; OFFSET = i * 4 (Dati a 32 bit / WORD) (int, uint32_t, ptr,long)
 	;
-	;
+	;--salvataggio su file
+	;per 8 bit (Byte) : STRB R4, [R2]
+	;per 16 bit (Half-Word): STRH R4, [R0, R1, LSL #1]
+	;per 32 bit (Word) STR R4, [R0, R1, LSL #2] [cosa scrivere,base,indice, shift]
+
 	;i tasti sulla scheda sono: Sulla scheda sono in ordine: KEY 1 ---- KEY 2 ---- INT 0	
 	;
 	;
@@ -202,7 +206,7 @@ primep			mov r0, #1
 calc_mod		FUNCTION
 				STMFD sp!,{r4-r8,r10-r11,lr}
 				;calcolo la divisione
-				udiv r2, r1, r0 ;r2 = r1/r0
+				udiv r2, r0, r1 ;r2 = r1/r0
 				mls r0, r2, r1, r0 ;metto in r0 il resto intero di r0/r1=r2 => r0= r0-(r2*r1)
 				;result in r0
 				

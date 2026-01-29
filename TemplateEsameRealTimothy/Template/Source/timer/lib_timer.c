@@ -403,7 +403,7 @@ void blink_init(int timer_num, int mr_off, int mr_reset, int hz_led, int hz_time
     if (sec > 0.0f) {
         // Calcolo quanti cicli totali servono.
         // Esempio: 4Hz * 5 secondi = 20 lampeggi totali.
-        blink_cnt = (int) sec * hz_led;
+        blink_cnt = (int) (sec * hz_led);
 			if (blink_cnt == 0 && sec > 0.0f) {
              blink_cnt = 1; 
         }
@@ -451,7 +451,7 @@ void blink_handler(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint
         if (led_num == 150) {
             LED_OffAll();       // Spegni tutti
         } else {
-            LED_Off(led_num);   // Spegni led specifico
+            LED_OffAll();   // Spegni led specifico
         }
         
         TIMx->IR = (1 << mr_off); // Pulisci il flag di interrupt
@@ -480,7 +480,7 @@ void blink_handler(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint
         if (led_num == 150) {
             LED_OnAll();
         } else {
-            LED_On(led_num);
+            LED_Out(led_num);
         }
             
         TIMx->IR = (1 << mr_reset); // Pulisci il flag di interrupt

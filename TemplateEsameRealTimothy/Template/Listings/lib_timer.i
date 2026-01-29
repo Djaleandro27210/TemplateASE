@@ -2177,7 +2177,7 @@ void blink_handler(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint
         if (led_num == 150) {
             LED_OffAll(); // Spegni tutti
         } else {
-            LED_Off(led_num); // Spegni led specifico
+            LED_OffAll(); // Spegni led specifico
         }
 
         TIMx->IR = (1 << mr_off); // Pulisci il flag di interrupt
@@ -2206,7 +2206,7 @@ void blink_handler(LPC_TIM_TypeDef *TIMx, uint8_t mr_off, uint8_t mr_reset, uint
         if (led_num == 150) {
             LED_OnAll();
         } else {
-            LED_On(led_num);
+            LED_Out(led_num);
         }
 
         TIMx->IR = (1 << mr_reset); // Pulisci il flag di interrupt
